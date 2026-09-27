@@ -1,0 +1,168 @@
+@import "tailwindcss";
+@import "@fontsource-variable/jetbrains-mono";
+
+/* ---------------------------------------------------------------------------
+   libellus design tokens — minimal dark developer workstation.
+   Layers, from outside in: chrome -> tab surface -> workspace -> content.
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-chrome: #1f1f27;
+  --color-tabbar: #1b1b22;
+  --color-workspace: #202028;
+  --color-surface: #24242d;
+  --color-raised: #2a2a34;
+
+  --color-text: #e6e6ea;
+  --color-dim: #92929b;
+  --color-muted: #666873;
+
+  --color-line: #2a2a33;
+  --color-line-strong: #35353f;
+
+  --color-accent: #d8a657;
+  --color-accent-dim: #8a6b36;
+  --color-danger: #d16b6b;
+  --color-ok: #7fa87f;
+
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular",
+    Menlo, Consolas, monospace;
+
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    min-width: 0;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-workspace);
+    color: var(--color-text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    /* A desktop tool, not a web page: no text selection on chrome. */
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  .cm-editor,
+  [data-selectable] {
+    user-select: text;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: default;
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-accent);
+    outline-offset: -1px;
+  }
+}
+
+/* Thin, quiet scrollbars. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #35353f;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #45454f;
+  background-clip: content-box;
+}
+
+/* --- CodeMirror ---------------------------------------------------------- */
+.cm-editor {
+  height: 100%;
+  background: transparent;
+}
+.cm-editor .cm-scroller {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.cm-editor.cm-focused {
+  outline: none;
+}
+.cm-editor .cm-content {
+  padding: 18px 0 40vh;
+  caret-color: var(--color-accent);
+}
+.cm-editor .cm-line {
+  padding: 0 22px;
+}
+/* Prose keeps a readable measure; code uses the full width of the window. */
+.doc-note .cm-content {
+  max-width: 96ch;
+}
+.cm-editor .cm-gutters {
+  background: transparent;
+  border-right: 1px solid var(--color-line);
+  color: var(--color-muted);
+  padding-right: 4px;
+}
+.cm-editor .cm-activeLineGutter {
+  background: transparent;
+  color: var(--color-dim);
+}
+.cm-editor .cm-activeLine {
+  background: #ffffff05;
+}
+.cm-editor .cm-selectionBackground,
+.cm-editor .cm-content ::selection {
+  background: #3c3a44 !important;
+}
+.cm-editor.cm-focused .cm-selectionBackground {
+  background: #4a4436 !important;
+}
+.cm-editor .cm-cursor {
+  border-left-color: var(--color-accent);
+  border-left-width: 2px;
+}
+.cm-editor .cm-searchMatch {
+  background: #4a4436;
+  outline: 1px solid var(--color-accent-dim);
+}
+.cm-editor .cm-panels {
+  background: var(--color-chrome);
+  border-top: 1px solid var(--color-line);
+  color: var(--color-dim);
+}
+.cm-editor .cm-panel input,
+.cm-editor .cm-panel button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line-strong);
+  color: var(--color-text);
+  border-radius: 2px;
+  padding: 2px 6px;
+}
+.cm-tooltip.cm-tooltip-autocomplete > ul {
+  font-family: var(--font-mono);
+  background: var(--color-chrome);
+  border: 1px solid var(--color-line-strong);
+}

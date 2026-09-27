@@ -1,0 +1,210 @@
+import { create } from "zustand";
+import { loadStore, saveStore } from "../lib/storage";
+import { newId, type Doc, type DocKind, type Language } from "../lib/types";
+
+export type SaveStatus = "idle" | "modified" | "saving" | "saved" | "error";
+
+interface WorkspaceState {
+  docs: Record<string, Doc>;
+  order: string[];
+  openTabs: string[];
+  activeTab: string | null;
+  dirty: Set<string>;
+  status: SaveStatus;
+  ready: boolean;
+
+  init: () => Promise<void>;
+  createDoc: (kind: DocKind, seed?: Partial<Doc>) => string;
+  openDoc: (id: string) => void;
+  closeTab: (id: string) => void;
+  activate: (id: string) => void;
+  cycleTab: (delta: number) => void;
+  updateBody: (id: string, body: string) => void;
+  rename: (id: string, title: string) => void;
+  setLanguage: (id: string, language: Language) => void;
+  deleteDoc: (id: string) => void;
+  flush: () => Promise<void>;
+}
+
+const DEFAULT_LANGUAGE: Record<DocKind, Language> = {
+  note: "markdown",
+  snippet: "typescript",
+};
+
+/** Turns the first meaningful line of a document into a tab-sized title. */
+function deriveTitle(body: string, kind: DocKind): string {
+  const line = body
+    .split("\n")
+    .map((l) => l.replace(/^[\s#/*<!;-]+/, "").trim())
+    .find((l) => l.length > 0);
+  if (!line) return kind === "note" ? "untitled note" : "untitled snippet";
+  return line.length > 60 ? `${line.slice(0, 60)}…` : line;
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+let savedTimer: ReturnType<typeof setTimeout> | undefined;
+
+export const useWorkspace = create<WorkspaceState>((set, get) => {
+  /** Debounced autosave. Explicit Ctrl+S goes through `flush` directly. */
+  const schedule = () => {
+    set({ status: "modified" });
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => void get().flush(), 900);
+  };
+
+  const touch = (id: string, patch: Partial<Doc>) => {
+    const doc = get().docs[id];
+    if (!doc) return;
+    const dirty = new Set(get().dirty);
+    dirty.add(id);
+    set({
+      docs: { ...get().docs, [id]: { ...doc, ...patch, updatedAt: Date.now() } },
+      dirty,
+    });
+    schedule();
+  };
+
+  return {
+    docs: {},
+    order: [],
+    openTabs: [],
+    activeTab: null,
+    dirty: new Set<string>(),
+    status: "idle",
+    ready: false,
+
+    async init() {
+      const store = await loadStore();
+      const docs: Record<string, Doc> = {};
+      for (const doc of store.docs) docs[doc.id] = doc;
+      const order = [...store.docs]
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .map((d) => d.id);
+      const openTabs = store.openTabs.filter((id) => docs[id]);
+      set({
+        docs,
+        order,
+        openTabs,
+        activeTab:
+          store.activeTab && docs[store.activeTab] ? store.activeTab : openTabs[0] ?? null,
+        ready: true,
+      });
+    },
+
+    createDoc(kind, seed) {
+      const id = newId();
+      const now = Date.now();
+      const doc: Doc = {
+        id,
+        kind,
+        title: seed?.title ?? (kind === "note" ? "untitled note" : "untitled snippet"),
+        language: seed?.language ?? DEFAULT_LANGUAGE[kind],
+        body: seed?.body ?? "",
+        autoTitle: seed?.autoTitle ?? true,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const dirty = new Set(get().dirty);
+      dirty.add(id);
+      set({
+        docs: { ...get().docs, [id]: doc },
+        order: [id, ...get().order],
+        openTabs: [...get().openTabs, id],
+        activeTab: id,
+        dirty,
+      });
+      schedule();
+      return id;
+    },
+
+    openDoc(id) {
+      if (!get().docs[id]) return;
+      const openTabs = get().openTabs.includes(id)
+        ? get().openTabs
+        : [...get().openTabs, id];
+      set({ openTabs, activeTab: id });
+      schedule();
+    },
+
+    closeTab(id) {
+      const { openTabs, activeTab } = get();
+      const index = openTabs.indexOf(id);
+      if (index === -1) return;
+      const next = openTabs.filter((t) => t !== id);
+      set({
+        openTabs: next,
+        activeTab:
+          activeTab === id ? next[Math.min(index, next.length - 1)] ?? null : activeTab,
+      });
+      schedule();
+    },
+
+    activate(id) {
+      set({ activeTab: id });
+      schedule();
+    },
+
+    cycleTab(delta) {
+      const { openTabs, activeTab } = get();
+      if (openTabs.length === 0) return;
+      const current = activeTab ? openTabs.indexOf(activeTab) : 0;
+      const next = (current + delta + openTabs.length) % openTabs.length;
+      set({ activeTab: openTabs[next] });
+    },
+
+    updateBody(id, body) {
+      const doc = get().docs[id];
+      if (!doc || doc.body === body) return;
+      // The first line doubles as the title until the document is renamed.
+      const patch: Partial<Doc> = { body };
+      if (doc.autoTitle) patch.title = deriveTitle(body, doc.kind);
+      touch(id, patch);
+    },
+
+    rename(id, title) {
+      touch(id, { title: title.trim() || "untitled", autoTitle: false });
+    },
+
+    setLanguage(id, language) {
+      touch(id, { language });
+    },
+
+    deleteDoc(id) {
+      const docs = { ...get().docs };
+      delete docs[id];
+      const openTabs = get().openTabs.filter((t) => t !== id);
+      set({
+        docs,
+        order: get().order.filter((t) => t !== id),
+        openTabs,
+        activeTab: get().activeTab === id ? openTabs[openTabs.length - 1] ?? null : get().activeTab,
+      });
+      void get().flush();
+    },
+
+    async flush() {
+      clearTimeout(saveTimer);
+      const { docs, openTabs, activeTab } = get();
+      set({ status: "saving" });
+      try {
+        await saveStore({
+          version: 1,
+          docs: Object.values(docs),
+          openTabs,
+          activeTab,
+        });
+        set({ dirty: new Set<string>(), status: "saved" });
+        clearTimeout(savedTimer);
+        savedTimer = setTimeout(() => {
+          if (get().status === "saved") set({ status: "idle" });
+        }, 1600);
+      } catch {
+        set({ status: "error" });
+      }
+    },
+  };
+});
+
+export function docLabel(doc: Doc): string {
+  return doc.title || (doc.kind === "note" ? "untitled note" : "untitled snippet");
+}
