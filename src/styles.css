@@ -7,7 +7,7 @@
    Layers, from outside in: chrome -> tab surface -> workspace -> content.
    --------------------------------------------------------------------------- */
 @theme {
-  --color-chrome: #22222b;
+  --color-chrome: #1f1f27;
   --color-tabbar: #22222b;
   --color-workspace: #22222b;
   --color-surface: #22222b;
@@ -120,15 +120,12 @@
   outline: none;
 }
 .cm-editor .cm-content {
-  padding: 18px 0 40vh;
+  padding: 18px 0 24px;
+  min-height: 100%;
   caret-color: var(--color-accent);
 }
 .cm-editor .cm-line {
   padding: 0 22px;
-}
-/* Prose keeps a readable measure; code uses the full width of the window. */
-.doc-note .cm-content {
-  max-width: 96ch;
 }
 .cm-editor .cm-gutters {
   background: transparent;
