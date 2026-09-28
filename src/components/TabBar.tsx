@@ -35,7 +35,7 @@ export function TabBar({ tabs, activeId, dirty, onSelect, onClose, onNew }: TabB
             className={`group relative flex max-w-60 min-w-28 items-center gap-2 px-3 text-[12px] ${
               active
                 ? "bg-tab-active text-text"
-                : "bg-tab text-dim hover:bg-tab-hover hover:text-text"
+                : "bg-tab text-dim hover:bg-tab-hover hover:text-text active:bg-pressed"
             }`}
           >
             <span className="text-[10px] text-muted">
@@ -51,7 +51,7 @@ export function TabBar({ tabs, activeId, dirty, onSelect, onClose, onNew }: TabB
               ) : null}
               <button
                 aria-label={`close ${docLabel(doc)}`}
-                className={`text-muted hover:text-text ${
+                className={`text-muted hover:text-text active:text-dim ${
                   dirty.has(doc.id) ? "hidden group-hover:block" : ""
                 }`}
                 onMouseDown={(event) => {
@@ -71,7 +71,7 @@ export function TabBar({ tabs, activeId, dirty, onSelect, onClose, onNew }: TabB
         aria-label="new note"
         title="new note (Ctrl N)"
         onClick={onNew}
-        className="grid w-10 shrink-0 place-items-center bg-tab text-[15px] leading-none text-dim hover:bg-tab-hover hover:text-text"
+        className="grid w-10 shrink-0 place-items-center bg-tab text-[15px] leading-none text-dim hover:bg-tab-hover hover:text-text active:bg-pressed"
       >
         +
       </button>

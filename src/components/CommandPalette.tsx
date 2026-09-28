@@ -20,11 +20,15 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  // Scrolling belongs to keyboard navigation only: doing it for a pointer-driven
+  // cursor makes the list shift under the pointer as it moves.
+  const keyboardNav = useRef(false);
   const items = useMemo(() => build(query), [build, query]);
 
   useEffect(() => setCursor(0), [query]);
 
   useEffect(() => {
+    if (!keyboardNav.current) return;
     listRef.current
       ?.querySelector('[data-active="true"]')
       ?.scrollIntoView({ block: "nearest" });
@@ -55,10 +59,12 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
             if (event.key === "Escape") onClose();
             if (event.key === "ArrowDown" || (event.key === "n" && event.ctrlKey)) {
               event.preventDefault();
+              keyboardNav.current = true;
               setCursor((c) => Math.min(c + 1, items.length - 1));
             }
             if (event.key === "ArrowUp" || (event.key === "p" && event.ctrlKey)) {
               event.preventDefault();
+              keyboardNav.current = true;
               setCursor((c) => Math.max(c - 1, 0));
             }
             if (event.key === "Enter") {
@@ -76,9 +82,13 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
             <button
               key={item.id}
               data-active={index === cursor}
-              onMouseMove={() => setCursor(index)}
+              onMouseMove={() => {
+                if (index === cursor) return;
+                keyboardNav.current = false;
+                setCursor(index);
+              }}
               onClick={() => run(item)}
-              className={`flex w-full items-baseline gap-3 px-4 py-[6px] text-left ${
+              className={`flex w-full items-baseline gap-3 px-4 py-[6px] text-left active:bg-pressed ${
                 index === cursor ? "bg-raised" : ""
               }`}
             >

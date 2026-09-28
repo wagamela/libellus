@@ -63,7 +63,7 @@ export function MenuBar({ menus }: { menus: Menu[] }) {
                     className={`flex w-full items-center justify-between gap-8 px-3 py-[5px] text-left text-[12px] ${
                       item.disabled
                         ? "text-muted"
-                        : "text-text hover:bg-raised"
+                        : "text-text hover:bg-raised active:bg-pressed"
                     }`}
                     onClick={() => {
                       setOpen(null);

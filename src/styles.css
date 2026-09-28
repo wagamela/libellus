@@ -17,6 +17,8 @@
   --color-tab: #1c1c24;
   --color-tab-active: #191920;
   --color-tab-hover: #1f1f27;
+  /* A press reads one step darker than the hover state it came from. */
+  --color-pressed: #15151b;
 
   --color-text: #ffffff;
   --color-dim: #8b97a8;
@@ -39,6 +41,13 @@
 
   --radius-xs: 2px;
   --radius-sm: 3px;
+
+  /* Interaction feel. Feedback is near-instant — long enough to read as a
+     fade rather than a jump, short enough that the UI never feels like it is
+     catching up. Only colour and opacity are ever transitioned; animating
+     anything that affects layout makes resizing heavy. */
+  --duration-hover: 80ms;
+  --duration-press: 40ms;
 }
 
 @layer base {
@@ -55,6 +64,7 @@
 
   body {
     margin: 0;
+    overscroll-behavior: none;
     background: var(--color-workspace);
     color: var(--color-text);
     font-family: var(--font-mono);
@@ -80,6 +90,34 @@
     border: 0;
     padding: 0;
     cursor: default;
+    /* Pointer feedback must never wait on a click round-trip. */
+    touch-action: manipulation;
+  }
+
+  /* Every piece of chrome that reacts to the pointer fades on hover and snaps
+     on press. `transition-behavior: allow-discrete` is deliberately not used:
+     these only ever cross colours. */
+  [data-interactive],
+  button,
+  [role="tab"] {
+    transition:
+      background-color var(--duration-hover) linear,
+      color var(--duration-hover) linear,
+      opacity var(--duration-hover) linear;
+  }
+  [data-interactive]:active,
+  button:active,
+  [role="tab"]:active {
+    transition-duration: var(--duration-press);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 1ms !important;
+      animation-duration: 1ms !important;
+    }
   }
 
   :focus-visible {
@@ -100,10 +138,18 @@
   background: #2e3742;
   border: 3px solid transparent;
   background-clip: content-box;
+  transition: background-color var(--duration-hover) linear;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #3c4753;
   background-clip: content-box;
+}
+
+/* The editor is its own layout and paint root: typing in it never forces the
+   chrome around it to be measured again, and a window resize reflows one
+   subtree instead of the whole document. */
+.editor-host {
+  contain: layout paint style;
 }
 
 /* --- CodeMirror ---------------------------------------------------------- */

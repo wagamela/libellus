@@ -9,6 +9,12 @@ const STATUS_TEXT: Record<SaveStatus, string> = {
   error: "save failed",
 };
 
+function countLines(body: string) {
+  let lines = 1;
+  for (let i = 0; i < body.length; i++) if (body.charCodeAt(i) === 10) lines++;
+  return lines;
+}
+
 export function StatusBar({
   doc,
   status,
@@ -18,7 +24,9 @@ export function StatusBar({
   status: SaveStatus;
   docCount: number;
 }) {
-  const lines = doc ? doc.body.split("\n").length : 0;
+  // Counted rather than split: this runs on every keystroke, and splitting
+  // allocates an array the size of the document each time.
+  const lines = doc ? countLines(doc.body) : 0;
   return (
     <div className="flex h-6 shrink-0 items-center gap-4 bg-chrome px-3 text-[11px] text-muted">
       <span>{doc ? doc.language : "no document"}</span>

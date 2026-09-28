@@ -128,5 +128,5 @@ export function Editor({ doc, onChange, onSave }: EditorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc.id, doc.language, doc.kind]);
 
-  return <div ref={host} className={`h-full overflow-hidden doc-${doc.kind}`} />;
+  return <div ref={host} className={`editor-host h-full overflow-hidden doc-${doc.kind}`} />;
 }
