@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MenuBar, type Menu } from "./components/MenuBar";
 import { TabBar } from "./components/TabBar";
-import { DocHeader } from "./components/DocHeader";
 import { Editor } from "./components/Editor";
 import { StatusBar } from "./components/StatusBar";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
 import { searchDocs } from "./lib/search";
+import { LANGUAGES } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
 
 type PaletteMode = "commands" | "open" | null;
@@ -13,6 +13,7 @@ type PaletteMode = "commands" | "open" | null;
 export default function App() {
   const store = useWorkspace();
   const [palette, setPalette] = useState<PaletteMode>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   useEffect(() => {
     void store.init();
@@ -21,6 +22,7 @@ export default function App() {
   }, []);
 
   const activeDoc = store.activeTab ? store.docs[store.activeTab] ?? null : null;
+  const armed = confirmDelete !== null && confirmDelete === store.activeTab;
   const tabs = store.openTabs.map((id) => store.docs[id]).filter(Boolean);
 
   const newNote = useCallback(() => store.createDoc("note"), [store]);
@@ -29,6 +31,17 @@ export default function App() {
   const closeActive = useCallback(() => {
     if (store.activeTab) store.closeTab(store.activeTab);
   }, [store]);
+  const deleteActive = useCallback(() => {
+    const id = store.activeTab;
+    if (!id) return;
+    // Deleting is irreversible, so it always takes two deliberate steps.
+    if (confirmDelete !== id) {
+      setConfirmDelete(id);
+      return;
+    }
+    setConfirmDelete(null);
+    store.deleteDoc(id);
+  }, [store, confirmDelete]);
   const findInDoc = useCallback(() => {
     // CodeMirror owns in-document search; hand it the keystroke it expects.
     const content = document.querySelector<HTMLElement>(".cm-content");
@@ -83,16 +96,37 @@ export default function App() {
       { id: "save", label: "save", hint: "Ctrl S", run: save },
       { id: "find", label: "find in document", hint: "Ctrl F", run: findInDoc },
       { id: "close", label: "close tab", hint: "Ctrl W", run: closeActive },
+      {
+        id: "delete",
+        label: armed ? "delete document — press again to confirm" : "delete document",
+        hint: activeDoc ? "" : "no document",
+        run: deleteActive,
+      },
       { id: "next", label: "next tab", hint: "Ctrl Tab", run: () => store.cycleTab(1) },
       { id: "prev", label: "previous tab", hint: "Ctrl Shift Tab", run: () => store.cycleTab(-1) },
     ],
-    [newNote, newSnippet, save, findInDoc, closeActive, store],
+    [newNote, newSnippet, save, findInDoc, closeActive, deleteActive, armed, activeDoc, store],
   );
 
   const buildCommands = useCallback(
     (query: string): PaletteItem[] => {
       const q = query.trim().toLowerCase();
       const matched = commands.filter((command) => command.label.includes(q));
+      // The language selector lived in the removed header; it is a command now.
+      const active = store.activeTab ? store.docs[store.activeTab] : undefined;
+      if (active?.kind === "snippet") {
+        for (const language of LANGUAGES) {
+          const label = `set language: ${language}`;
+          if (label.includes(q)) {
+            matched.push({
+              id: `lang-${language}`,
+              label,
+              hint: active.language === language ? "current" : "",
+              run: () => store.setLanguage(active.id, language),
+            });
+          }
+        }
+      }
       if (!q) return matched;
       const docs = searchDocs(Object.values(store.docs), query)
         .slice(0, 8)
@@ -143,6 +177,11 @@ export default function App() {
           disabled: !activeDoc,
           separatorBefore: true,
         },
+        {
+          label: armed ? "Delete Document — Confirm" : "Delete Document",
+          action: deleteActive,
+          disabled: !activeDoc,
+        },
       ],
     },
     {
@@ -192,22 +231,16 @@ export default function App() {
       )}
       <div className="flex min-h-0 flex-1 flex-col">
         {activeDoc ? (
-          <>
-            <DocHeader
+          // The editor fills the window: the tab is the only place a document
+          // is named, and its actions live in the menus and the palette.
+          <div className="min-h-0 flex-1">
+            <Editor
+              key={activeDoc.id}
               doc={activeDoc}
-              onRename={(title) => store.rename(activeDoc.id, title)}
-              onLanguage={(language) => store.setLanguage(activeDoc.id, language)}
-              onDelete={() => store.deleteDoc(activeDoc.id)}
+              onChange={(body) => store.updateBody(activeDoc.id, body)}
+              onSave={save}
             />
-            <div className="min-h-0 flex-1">
-              <Editor
-                key={activeDoc.id}
-                doc={activeDoc}
-                onChange={(body) => store.updateBody(activeDoc.id, body)}
-                onSave={save}
-              />
-            </div>
-          </>
+          </div>
         ) : (
           // Only reachable by closing the last tab: startup always opens a
           // document. A quiet hint, not a landing page.

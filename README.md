@@ -15,7 +15,7 @@ shell and the editor. See `project_spec.md` for the full product scope and
   (TypeScript, JavaScript, JSON, Python, Rust, SQL, plain text)
 - Opens straight into the document you last worked on (a fresh note on a first
   run), with the caret already in the editor — there is no landing page
-- Titles derived from the first line until a document is renamed by hand
+- Titles derived from the first line of the document and shown on its tab
 - Command palette (`Ctrl K`) and quick open with local search over titles and
   bodies (`Ctrl P`)
 - Autosave with explicit `Ctrl S`, and modified / saving / saved states
@@ -60,7 +60,7 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 
 ```text
 src/
-  components/   MenuBar, TabBar, DocHeader, Editor, CommandPalette, StatusBar
+  components/   MenuBar, TabBar, Editor, CommandPalette, StatusBar
   lib/          types, storage, search, editor theme and lazy language loading
   store/        zustand workspace store (documents, tabs, autosave)
 src-tauri/      Rust shell; load_store / save_store commands
