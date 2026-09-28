@@ -7,11 +7,16 @@
    Layers, from outside in: chrome -> tab surface -> workspace -> content.
    --------------------------------------------------------------------------- */
 @theme {
-  --color-chrome: #161b23;
-  --color-tabbar: #12161d;
-  --color-workspace: #1c222b;
-  --color-surface: #232a34;
-  --color-raised: #2b333f;
+  --color-chrome: #22222b;
+  --color-tabbar: #22222b;
+  --color-workspace: #22222b;
+  --color-surface: #22222b;
+  --color-raised: #191920;
+
+  /* Tabs carry their own pair: the selected tab is the darker of the two. */
+  --color-tab: #1c1c24;
+  --color-tab-active: #191920;
+  --color-tab-hover: #1f1f27;
 
   --color-text: #ffffff;
   --color-dim: #8b97a8;
@@ -25,10 +30,12 @@
   --color-danger: #c8d2df;
   --color-ok: #8b97a8;
 
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", sans-serif;
-  --font-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular",
-    Menlo, Consolas, monospace;
+  --font-sans:
+    "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-mono:
+    "Geist Mono Variable", ui-monospace, "SFMono-Regular", Menlo, Consolas,
+    monospace;
 
   --radius-xs: 2px;
   --radius-sm: 3px;

@@ -7,9 +7,10 @@ interface TabBarProps {
   dirty: Set<string>;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
+  onNew: () => void;
 }
 
-export function TabBar({ tabs, activeId, dirty, onSelect, onClose }: TabBarProps) {
+export function TabBar({ tabs, activeId, dirty, onSelect, onClose, onNew }: TabBarProps) {
   return (
     <div className="flex h-9 shrink-0 items-stretch gap-px overflow-x-auto bg-tabbar">
       {tabs.map((doc) => {
@@ -29,10 +30,12 @@ export function TabBar({ tabs, activeId, dirty, onSelect, onClose }: TabBarProps
               }
             }}
             onKeyDown={(event) => event.key === "Enter" && onSelect(doc.id)}
-            // The active tab shares the editor's surface; the rest sit a shade
-            // darker. The 1px gap is the tab strip showing through.
+            // The selected tab is the darker of the pair; the 1px gap between
+            // tabs is the strip showing through.
             className={`group relative flex max-w-60 min-w-28 items-center gap-2 px-3 text-[12px] ${
-              active ? "bg-workspace text-text" : "bg-chrome text-dim hover:bg-surface hover:text-text"
+              active
+                ? "bg-tab-active text-text"
+                : "bg-tab text-dim hover:bg-tab-hover hover:text-text"
             }`}
           >
             <span className="text-[10px] text-muted">
@@ -63,6 +66,15 @@ export function TabBar({ tabs, activeId, dirty, onSelect, onClose }: TabBarProps
           </div>
         );
       })}
+      {/* A tab-shaped block, held apart by the same 1px gap as the tabs. */}
+      <button
+        aria-label="new note"
+        title="new note (Ctrl N)"
+        onClick={onNew}
+        className="grid w-10 shrink-0 place-items-center bg-tab text-[15px] leading-none text-dim hover:bg-tab-hover hover:text-text"
+      >
+        +
+      </button>
       <div className="flex-1" />
     </div>
   );

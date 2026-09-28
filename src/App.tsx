@@ -227,6 +227,7 @@ export default function App() {
           dirty={store.dirty}
           onSelect={store.activate}
           onClose={store.closeTab}
+          onNew={newNote}
         />
       )}
       <div className="flex min-h-0 flex-1 flex-col">
