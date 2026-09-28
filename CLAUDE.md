@@ -64,6 +64,9 @@ deliberately simple until SQLite FTS replaces it.
 
 - Design tokens live in `@theme` in `src/styles.css` (`bg-workspace`, `text-dim`,
   `border-line`, …). Use the token classes; do not introduce raw hex colours in components.
+- The palette is deliberately achromatic: dark blue-grey surfaces, white content, and a
+  near-white `--color-accent`. Emphasis comes from brightness, never hue — that includes
+  syntax highlighting and error states. Do not add a coloured accent or semantic hues.
 - The UI is monospace throughout and lowercase in most labels; it should read as a native
   desktop tool, not a web page.
 - The CSP in `tauri.conf.json` allows only self, inline styles, data images and data fonts.

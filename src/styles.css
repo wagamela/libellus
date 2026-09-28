@@ -7,23 +7,24 @@
    Layers, from outside in: chrome -> tab surface -> workspace -> content.
    --------------------------------------------------------------------------- */
 @theme {
-  --color-chrome: #1f1f27;
-  --color-tabbar: #1b1b22;
-  --color-workspace: #202028;
-  --color-surface: #24242d;
-  --color-raised: #2a2a34;
+  --color-chrome: #171c24;
+  --color-tabbar: #13181f;
+  --color-workspace: #1a1f27;
+  --color-surface: #1e242d;
+  --color-raised: #252c37;
 
-  --color-text: #e6e6ea;
-  --color-dim: #92929b;
-  --color-muted: #666873;
+  --color-text: #ffffff;
+  --color-dim: #8b97a8;
+  --color-muted: #5d6878;
 
-  --color-line: #2a2a33;
-  --color-line-strong: #35353f;
+  --color-line: #242b35;
+  --color-line-strong: #313a47;
 
-  --color-accent: #d8a657;
-  --color-accent-dim: #8a6b36;
-  --color-danger: #d16b6b;
-  --color-ok: #7fa87f;
+  /* The only "accent" is light: emphasis comes from brightness, not hue. */
+  --color-accent: #dbe4f0;
+  --color-accent-dim: #46525f;
+  --color-danger: #c8d2df;
+  --color-ok: #8b97a8;
 
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", sans-serif;
@@ -90,12 +91,12 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #35353f;
+  background: #2e3742;
   border: 3px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #45454f;
+  background: #3c4753;
   background-clip: content-box;
 }
 
@@ -138,17 +139,17 @@
 }
 .cm-editor .cm-selectionBackground,
 .cm-editor .cm-content ::selection {
-  background: #3c3a44 !important;
+  background: #2f3945 !important;
 }
 .cm-editor.cm-focused .cm-selectionBackground {
-  background: #4a4436 !important;
+  background: #3b4a5c !important;
 }
 .cm-editor .cm-cursor {
   border-left-color: var(--color-accent);
   border-left-width: 2px;
 }
 .cm-editor .cm-searchMatch {
-  background: #4a4436;
+  background: #3b4a5c;
   outline: 1px solid var(--color-accent-dim);
 }
 .cm-editor .cm-panels {

@@ -223,13 +223,13 @@ Content surface
 Example starting palette:
 
 ``` text
-Application chrome   #1F1F27
-Tab surface          #1B1B22
-Workspace            #202028
-Primary text         #E6E6EA
-Secondary text       #92929B
-Muted text           #666873
-Border               #2A2A33
+Application chrome   #171C24
+Tab surface          #13181F
+Workspace            #1A1F27
+Primary text         #FFFFFF
+Secondary text       #8B97A8
+Muted text           #5D6878
+Border               #242B35
 ```
 
 These values are starting points, not immutable requirements.
@@ -240,6 +240,13 @@ Use one restrained accent color for active tab, focus, selection,
 important interactive states, and links when necessary. Do not use the
 accent as decoration. Avoid rainbow interfaces and excessive semantic
 colors.
+
+The interface is achromatic by decision: the surfaces are dark blue-greys,
+the content is white, and the accent is a near-white `#DBE4F0` rather than a
+hue. Emphasis — the active tab, the caret, focus rings, the unsaved dot —
+comes from brightness, not colour. This extends to syntax highlighting and to
+states such as errors, which are brighter rather than red. Do not reintroduce
+a coloured accent or semantic hues.
 
 ------------------------------------------------------------------------
 

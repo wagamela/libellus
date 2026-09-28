@@ -5,40 +5,41 @@ import type { Extension } from "@codemirror/state";
 import type { Language } from "./types";
 
 /**
- * A quiet syntax palette: neutral text carries the code, and only a handful of
- * hues separate the token classes. Nothing here competes with the accent.
+ * A single-hue syntax palette: every token is a dark blue-grey or white, and
+ * token classes are separated by brightness alone. No colour competes for
+ * attention because there is only one.
  */
 const libellusHighlight = HighlightStyle.define([
-  { tag: [t.comment, t.lineComment, t.blockComment], color: "#666873", fontStyle: "italic" },
-  { tag: [t.keyword, t.modifier, t.controlKeyword], color: "#c98fb4" },
-  { tag: [t.string, t.special(t.string)], color: "#9db88f" },
-  { tag: [t.number, t.bool, t.null, t.atom], color: "#d8a657" },
-  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#87a9c4" },
-  { tag: [t.typeName, t.className, t.namespace], color: "#d3b58d" },
-  { tag: [t.propertyName, t.attributeName], color: "#a8a8b4" },
-  { tag: [t.variableName, t.definition(t.variableName)], color: "#e6e6ea" },
-  { tag: [t.operator, t.punctuation, t.bracket], color: "#92929b" },
-  { tag: [t.heading], color: "#e6e6ea", fontWeight: "600" },
-  { tag: [t.heading1, t.heading2], color: "#d8a657", fontWeight: "600" },
-  { tag: [t.link, t.url], color: "#87a9c4", textDecoration: "underline" },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: "#5d6878", fontStyle: "italic" },
+  { tag: [t.keyword, t.modifier, t.controlKeyword], color: "#9fb0c6" },
+  { tag: [t.string, t.special(t.string)], color: "#b8c4d4" },
+  { tag: [t.number, t.bool, t.null, t.atom], color: "#ced9e7" },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#dde6f1" },
+  { tag: [t.typeName, t.className, t.namespace], color: "#c3cfdd" },
+  { tag: [t.propertyName, t.attributeName], color: "#a4b1c1" },
+  { tag: [t.variableName, t.definition(t.variableName)], color: "#eef3f9" },
+  { tag: [t.operator, t.punctuation, t.bracket], color: "#7b8797" },
+  { tag: [t.heading], color: "#ffffff", fontWeight: "600" },
+  { tag: [t.heading1, t.heading2], color: "#ffffff", fontWeight: "700" },
+  { tag: [t.link, t.url], color: "#ced9e7", textDecoration: "underline" },
   { tag: [t.emphasis], fontStyle: "italic" },
   { tag: [t.strong], fontWeight: "600" },
-  { tag: [t.quote], color: "#92929b" },
-  { tag: [t.monospace], color: "#d3b58d" },
-  { tag: [t.invalid], color: "#d16b6b" },
+  { tag: [t.quote], color: "#8b97a8" },
+  { tag: [t.monospace], color: "#c3cfdd" },
+  { tag: [t.invalid], color: "#c8d2df", textDecoration: "underline wavy" },
 ]);
 
 export const libellusTheme: Extension = [
   EditorView.theme(
     {
-      "&": { color: "#e6e6ea", backgroundColor: "transparent" },
+      "&": { color: "#eef3f9", backgroundColor: "transparent" },
       ".cm-foldPlaceholder": {
-        backgroundColor: "#2a2a34",
-        border: "1px solid #35353f",
-        color: "#92929b",
+        backgroundColor: "#252c37",
+        border: "1px solid #313a47",
+        color: "#8b97a8",
       },
       ".cm-matchingBracket, &.cm-focused .cm-matchingBracket": {
-        backgroundColor: "#3a3a46",
+        backgroundColor: "#33404f",
         outline: "none",
       },
     },
