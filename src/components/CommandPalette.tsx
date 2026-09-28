@@ -42,7 +42,7 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
       onMouseDown={onClose}
     >
       <div
-        className="h-fit w-[min(680px,90vw)] border border-line-strong bg-chrome shadow-[0_16px_48px_#00000080]"
+        className="h-fit w-[min(680px,90vw)] bg-chrome shadow-[0_16px_48px_#00000080]"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <input
@@ -66,7 +66,7 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
               run(items[cursor]);
             }
           }}
-          className="w-full border-b border-line bg-transparent px-4 py-3 text-[13px] text-text outline-none placeholder:text-muted"
+          className="w-full bg-surface px-4 py-3 text-[13px] text-text outline-none placeholder:text-muted"
         />
         <div ref={listRef} className="max-h-[52vh] overflow-y-auto py-1">
           {items.length === 0 && (
@@ -78,8 +78,8 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
               data-active={index === cursor}
               onMouseMove={() => setCursor(index)}
               onClick={() => run(item)}
-              className={`flex w-full items-baseline gap-3 border-l-2 py-[6px] pr-4 pl-[14px] text-left ${
-                index === cursor ? "border-accent bg-raised" : "border-transparent"
+              className={`flex w-full items-baseline gap-3 px-4 py-[6px] text-left ${
+                index === cursor ? "bg-raised" : ""
               }`}
             >
               <span className="flex-1 truncate text-[12px] text-text">

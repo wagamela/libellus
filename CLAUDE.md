@@ -63,7 +63,11 @@ deliberately simple until SQLite FTS replaces it.
 ## Conventions
 
 - Design tokens live in `@theme` in `src/styles.css` (`bg-workspace`, `text-dim`,
-  `border-line`, …). Use the token classes; do not introduce raw hex colours in components.
+  `bg-surface`, …). Use the token classes; do not introduce raw hex colours in components.
+- There are no separator lines anywhere — no borders between regions, around panels, inputs
+  or menus, and no rules inside menus. Sections, buttons and components are separated only by
+  small differences between the surface tokens (and by spacing). There are deliberately no
+  `--color-line` tokens to reach for; do not add borders back.
 - The palette is deliberately achromatic: dark blue-grey surfaces, white content, and a
   near-white `--color-accent`. Emphasis comes from brightness, never hue — that includes
   syntax highlighting and error states. Do not add a coloured accent or semantic hues.

@@ -11,7 +11,7 @@ interface TabBarProps {
 
 export function TabBar({ tabs, activeId, dirty, onSelect, onClose }: TabBarProps) {
   return (
-    <div className="flex h-9 shrink-0 items-stretch overflow-x-auto border-b border-line bg-tabbar">
+    <div className="flex h-9 shrink-0 items-stretch gap-px overflow-x-auto bg-tabbar">
       {tabs.map((doc) => {
         const active = doc.id === activeId;
         return (
@@ -29,13 +29,12 @@ export function TabBar({ tabs, activeId, dirty, onSelect, onClose }: TabBarProps
               }
             }}
             onKeyDown={(event) => event.key === "Enter" && onSelect(doc.id)}
-            className={`group relative flex max-w-60 min-w-28 items-center gap-2 border-r border-line px-3 text-[12px] ${
-              active
-                ? "bg-workspace text-text"
-                : "bg-tabbar text-dim hover:bg-workspace/60 hover:text-text"
+            // The active tab shares the editor's surface; the rest sit a shade
+            // darker. The 1px gap is the tab strip showing through.
+            className={`group relative flex max-w-60 min-w-28 items-center gap-2 px-3 text-[12px] ${
+              active ? "bg-workspace text-text" : "bg-chrome text-dim hover:bg-surface hover:text-text"
             }`}
           >
-            {active && <span className="absolute inset-x-0 top-0 h-px bg-accent" />}
             <span className="text-[10px] text-muted">
               {doc.kind === "note" ? "md" : doc.language.slice(0, 2)}
             </span>
@@ -64,7 +63,7 @@ export function TabBar({ tabs, activeId, dirty, onSelect, onClose }: TabBarProps
           </div>
         );
       })}
-      <div className="flex-1 border-b border-transparent" />
+      <div className="flex-1" />
     </div>
   );
 }

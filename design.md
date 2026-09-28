@@ -223,13 +223,14 @@ Content surface
 Example starting palette:
 
 ``` text
-Application chrome   #171C24
-Tab surface          #13181F
-Workspace            #1A1F27
+Application chrome   #161B23
+Tab surface          #12161D
+Workspace            #1C222B
 Primary text         #FFFFFF
 Secondary text       #8B97A8
 Muted text           #5D6878
-Border               #242B35
+Content surface      #232A34
+Raised surface       #2B333F
 ```
 
 These values are starting points, not immutable requirements.
@@ -252,11 +253,21 @@ a coloured accent or semantic hues.
 
 ## 9. Borders and Separators
 
-Thin separators should be one of the primary methods of structuring the
-interface.
+Libellus uses **no separator lines**. There are no borders between the menu
+bar, tab strip, document header, editor and status bar, none around menus,
+panels, inputs or the command palette, and no rules inside menus.
 
-Borders should be thin, low contrast, consistent, and used to establish
-structure. Avoid thick decorative borders.
+Structure is carried entirely by small differences between the dark blue-grey
+surfaces, which is why they form a close but distinguishable ramp: tab strip
+darkest, then chrome, then the workspace the content sits on, then raised
+surfaces for fields and selections. Menu groups are separated by spacing, the
+active tab by sharing the editor's surface, and a selected row by a slightly
+lighter background.
+
+The overall look should stay very plain: flat blocks of near-identical colour,
+no outlines, no decorative depth. Shadows are used only to lift a floating
+layer (a menu, the command palette) off the surface beneath it. Focus rings
+and the text caret are not separators and remain.
 
 ------------------------------------------------------------------------
 

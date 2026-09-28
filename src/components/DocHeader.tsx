@@ -26,7 +26,7 @@ export function DocHeader({ doc, onRename, onLanguage, onDelete }: DocHeaderProp
   }, [doc.id, doc.title]);
 
   return (
-    <div className="flex h-10 shrink-0 items-center gap-3 border-b border-line bg-workspace px-4">
+    <div className="flex h-10 shrink-0 items-center gap-3 bg-chrome px-4">
       <span className="text-[10px] tracking-[0.18em] text-muted uppercase">{doc.kind}</span>
       <input
         value={title}
@@ -40,14 +40,14 @@ export function DocHeader({ doc, onRename, onLanguage, onDelete }: DocHeaderProp
           }
         }}
         spellCheck={false}
-        className="min-w-0 flex-1 border-b border-transparent bg-transparent py-1 text-[13px] text-text outline-none hover:border-line focus:border-accent"
+        className="min-w-0 flex-1 bg-transparent px-2 py-1 text-[13px] text-text outline-none hover:bg-surface focus:bg-surface"
       />
       <span className="text-[11px] text-muted">{when(doc.updatedAt)}</span>
       {doc.kind === "snippet" && (
         <select
           value={doc.language}
           onChange={(event) => onLanguage(event.target.value as Language)}
-          className="border border-line bg-surface px-2 py-[3px] text-[11px] text-dim outline-none hover:text-text focus:border-accent"
+          className="bg-raised px-2 py-[3px] text-[11px] text-dim outline-none hover:text-text"
         >
           {LANGUAGES.map((language) => (
             <option key={language} value={language}>

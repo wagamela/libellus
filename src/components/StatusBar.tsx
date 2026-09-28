@@ -20,7 +20,7 @@ export function StatusBar({
 }) {
   const lines = doc ? doc.body.split("\n").length : 0;
   return (
-    <div className="flex h-6 shrink-0 items-center gap-4 border-t border-line bg-chrome px-3 text-[11px] text-muted">
+    <div className="flex h-6 shrink-0 items-center gap-4 bg-chrome px-3 text-[11px] text-muted">
       <span>{doc ? doc.language : "no document"}</span>
       {doc && (
         <>

@@ -36,7 +36,7 @@ export function MenuBar({ menus }: { menus: Menu[] }) {
   return (
     <div
       ref={bar}
-      className="flex h-8 shrink-0 items-stretch border-b border-line bg-chrome pl-1 select-none"
+      className="flex h-8 shrink-0 items-stretch bg-chrome pl-1 select-none"
     >
       {menus.map((menu) => (
         <div key={menu.label} className="relative flex">
@@ -53,10 +53,11 @@ export function MenuBar({ menus }: { menus: Menu[] }) {
             {menu.label}
           </button>
           {open === menu.label && (
-            <div className="absolute top-8 left-0 z-50 min-w-56 border border-line-strong bg-chrome py-1 shadow-[0_8px_24px_#00000066]">
+            <div className="absolute top-8 left-0 z-50 min-w-56 bg-surface py-1 shadow-[0_8px_24px_#00000066]">
               {menu.items.map((item) => (
                 <div key={item.label}>
-                  {item.separatorBefore && <div className="my-1 h-px bg-line" />}
+                  {/* Groups are spaced apart, never ruled off. */}
+                  {item.separatorBefore && <div className="h-2" />}
                   <button
                     disabled={item.disabled}
                     className={`flex w-full items-center justify-between gap-8 px-3 py-[5px] text-left text-[12px] ${
