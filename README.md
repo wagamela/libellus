@@ -13,6 +13,8 @@ shell and the editor. See `project_spec.md` for the full product scope and
 - Tab-based workspace with an application menu and a status bar
 - CodeMirror 6 editor — markdown for notes, syntax highlighting for snippets
   (TypeScript, JavaScript, JSON, Python, Rust, SQL, plain text)
+- Opens straight into the document you last worked on (a fresh note on a first
+  run), with the caret already in the editor — there is no landing page
 - Titles derived from the first line until a document is renamed by hand
 - Command palette (`Ctrl K`) and quick open with local search over titles and
   bodies (`Ctrl P`)
@@ -58,7 +60,7 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 
 ```text
 src/
-  components/   MenuBar, TabBar, DocHeader, Editor, CommandPalette, Welcome, StatusBar
+  components/   MenuBar, TabBar, DocHeader, Editor, CommandPalette, StatusBar
   lib/          types, storage, search, editor theme and lazy language loading
   store/        zustand workspace store (documents, tabs, autosave)
 src-tauri/      Rust shell; load_store / save_store commands

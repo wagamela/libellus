@@ -81,14 +81,16 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .map((d) => d.id);
       const openTabs = store.openTabs.filter((id) => docs[id]);
-      set({
-        docs,
-        order,
-        openTabs,
-        activeTab:
-          store.activeTab && docs[store.activeTab] ? store.activeTab : openTabs[0] ?? null,
-        ready: true,
-      });
+      const restored =
+        store.activeTab && docs[store.activeTab] ? store.activeTab : openTabs[0] ?? null;
+      set({ docs, order, openTabs, activeTab: restored, ready: true });
+
+      // There is no landing page: the window always opens on a document the
+      // user can type into. Failing a restored tab, that is the most recently
+      // edited document, and failing any document at all, a fresh note.
+      if (restored) return;
+      if (order.length > 0) get().openDoc(order[0]);
+      else get().createDoc("note");
     },
 
     createDoc(kind, seed) {

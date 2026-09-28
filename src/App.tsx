@@ -3,7 +3,6 @@ import { MenuBar, type Menu } from "./components/MenuBar";
 import { TabBar } from "./components/TabBar";
 import { DocHeader } from "./components/DocHeader";
 import { Editor } from "./components/Editor";
-import { Welcome } from "./components/Welcome";
 import { StatusBar } from "./components/StatusBar";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
 import { searchDocs } from "./lib/search";
@@ -23,10 +22,6 @@ export default function App() {
 
   const activeDoc = store.activeTab ? store.docs[store.activeTab] ?? null : null;
   const tabs = store.openTabs.map((id) => store.docs[id]).filter(Boolean);
-  const recent = useMemo(
-    () => store.order.map((id) => store.docs[id]).filter(Boolean).slice(0, 8),
-    [store.order, store.docs],
-  );
 
   const newNote = useCallback(() => store.createDoc("note"), [store]);
   const newSnippet = useCallback(() => store.createDoc("snippet"), [store]);
@@ -214,12 +209,11 @@ export default function App() {
             </div>
           </>
         ) : (
-          <Welcome
-            recent={recent}
-            onOpen={store.openDoc}
-            onNewNote={newNote}
-            onNewSnippet={newSnippet}
-          />
+          // Only reachable by closing the last tab: startup always opens a
+          // document. A quiet hint, not a landing page.
+          <div className="flex h-full items-center justify-center text-[11px] text-muted">
+            {store.ready && "Ctrl N new note · Ctrl P open"}
+          </div>
         )}
       </div>
       <StatusBar
