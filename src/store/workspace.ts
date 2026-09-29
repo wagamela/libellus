@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { loadStore, saveStore } from "../lib/storage";
+import { IMAGE_REF, deleteImage, imageRefs } from "../lib/images";
 import { newId, type Doc, type DocKind, type Language } from "../lib/types";
 
 export type SaveStatus = "idle" | "modified" | "saving" | "saved" | "error";
@@ -35,7 +36,8 @@ const DEFAULT_LANGUAGE: Record<DocKind, Language> = {
 function deriveTitle(body: string, kind: DocKind): string {
   const line = body
     .split("\n")
-    .map((l) => l.replace(/^[\s#/*<!;-]+/, "").trim())
+    // An image reference is a picture, not a sentence: it never names the tab.
+    .map((l) => l.replace(IMAGE_REF, "").replace(/^[\s#/*<!;-]+/, "").trim())
     .find((l) => l.length > 0);
   if (!line) return kind === "note" ? "untitled note" : "untitled snippet";
   return line.length > 60 ? `${line.slice(0, 60)}…` : line;
@@ -173,7 +175,16 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     deleteDoc(id) {
       const docs = { ...get().docs };
+      const doomed = docs[id];
       delete docs[id];
+      // Images the rest of the workspace no longer refers to go with it,
+      // otherwise the image directory only ever grows.
+      if (doomed) {
+        const kept = new Set(Object.values(docs).flatMap((d) => imageRefs(d.body)));
+        for (const name of imageRefs(doomed.body)) {
+          if (!kept.has(name)) void deleteImage(name);
+        }
+      }
       const openTabs = get().openTabs.filter((t) => t !== id);
       set({
         docs,

@@ -20,6 +20,7 @@ import {
 import { closeBrackets, closeBracketsKeymap, autocompletion } from "@codemirror/autocomplete";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { loadLanguage, libellusTheme } from "../lib/editor";
+import { libellusImages } from "../lib/imageView";
 import type { Doc } from "../lib/types";
 
 interface EditorProps {
@@ -79,6 +80,7 @@ export function Editor({ doc, onChange, onSave }: EditorProps) {
           highlightActiveLine(),
           highlightSelectionMatches(),
           EditorView.lineWrapping,
+          libellusImages,
           keymap.of([
             {
               key: "Mod-s",

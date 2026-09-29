@@ -18,9 +18,13 @@ shell and the editor. See `project_spec.md` for the full product scope and
 - Titles derived from the first line of the document and shown on its tab
 - Command palette (`Ctrl K`) and quick open with local search over titles and
   bodies (`Ctrl P`)
+- Paste (or drop) an image into a document: it is stored as a file beside the
+  workspace and shown inline under its reference line
 - Autosave with explicit `Ctrl S`, and modified / saving / saved states
 - Persistence in the OS app-data directory via an atomic write, with a
-  localStorage fallback when the frontend runs in a plain browser
+  localStorage fallback when the frontend runs in a plain browser (pasted
+  images sit in an `images/` directory next to the store, or in IndexedDB in
+  the browser fallback)
 - Fully offline: no network requests, no accounts, no telemetry
 
 ## Not in this version
@@ -53,6 +57,7 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 | New snippet      | `Ctrl Shift N` |
 | Save             | `Ctrl S`       |
 | Find in document | `Ctrl F`       |
+| Paste image      | `Ctrl V`       |
 | Close tab        | `Ctrl W`       |
 | Next tab         | `Ctrl Tab`     |
 
@@ -61,7 +66,8 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 ```text
 src/
   components/   MenuBar, TabBar, Editor, CommandPalette, StatusBar
-  lib/          types, storage, search, editor theme and lazy language loading
+  lib/          types, storage, images, search, editor theme and lazy language
+                loading
   store/        zustand workspace store (documents, tabs, autosave)
-src-tauri/      Rust shell; load_store / save_store commands
+src-tauri/      Rust shell; load_store / save_store and the image commands
 ```
