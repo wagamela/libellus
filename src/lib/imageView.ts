@@ -5,25 +5,33 @@ import { IMAGE_REF, getImage, imagesFrom, peekImage, putImage } from "./images";
 
 /**
  * Images in the editor. A pasted image is written to the image store and the
- * document gets a plain-text reference — `![image](libellus:name.png)` — which
- * stays editable, selectable and deletable like any other line. The picture
- * itself is a block widget drawn under that line, so nothing about the
- * document model changes: delete the line and the image goes with it.
+ * document holds only a plain-text reference — `![image](libellus:name.png)`.
+ * The reference is never shown: the picture is drawn in its place, replacing
+ * the whole line when the line is nothing but the reference, and just the
+ * reference itself when it sits among other text.
+ *
+ * Nothing about the document model changes — the text is still there, which is
+ * what a document saved out with "save as" contains — but the editor treats
+ * the replaced range as one atom, so the caret steps over the image and a
+ * single backspace removes it.
  */
 
 class ImageWidget extends WidgetType {
-  constructor(readonly name: string) {
+  constructor(
+    readonly name: string,
+    readonly block: boolean,
+  ) {
     super();
   }
 
   /** Same file, same widget: the DOM node survives edits without flicker. */
   eq(other: ImageWidget): boolean {
-    return other.name === this.name;
+    return other.name === this.name && other.block === this.block;
   }
 
   toDOM(view: EditorView): HTMLElement {
-    const wrap = document.createElement("div");
-    wrap.className = "cm-image";
+    const wrap = document.createElement(this.block ? "div" : "span");
+    wrap.className = this.block ? "cm-image" : "cm-image cm-image-inline";
 
     const img = document.createElement("img");
     img.alt = "";
@@ -60,18 +68,23 @@ function build(state: EditorState): DecorationSet {
 
   const builder = new RangeSetBuilder<Decoration>();
   for (const match of text.matchAll(IMAGE_REF)) {
-    const line = state.doc.lineAt(match.index);
+    const from = match.index;
+    const to = from + match[0].length;
+    const line = state.doc.lineAt(from);
+    // A line that is only a reference becomes the picture; a reference inside
+    // a sentence is replaced where it stands so the sentence survives.
+    const alone = line.text.trim() === match[0];
     builder.add(
-      line.to,
-      line.to,
-      Decoration.widget({ widget: new ImageWidget(match[1]), block: true, side: 1 }),
+      alone ? line.from : from,
+      alone ? line.to : to,
+      Decoration.replace({ widget: new ImageWidget(match[1], alone), block: alone }),
     );
   }
   return builder.finish();
 }
 
-// Block widgets have to come from a state field — a view plugin may not change
-// the vertical layout of content outside the viewport.
+// Block decorations have to come from a state field — a view plugin may not
+// change the vertical layout of content outside the viewport.
 const imageField = StateField.define<DecorationSet>({
   create: build,
   update: (value, tr) => (tr.docChanged ? build(tr.state) : value),
@@ -101,6 +114,9 @@ function insertImages(view: EditorView, files: File[]): boolean {
 
 export const libellusImages: Extension = [
   imageField,
+  // The picture is one thing, not a run of hidden characters: arrow keys step
+  // over it and one backspace takes the whole reference with it.
+  EditorView.atomicRanges.of((view) => view.state.field(imageField, false) ?? Decoration.none),
   EditorView.domEventHandlers({
     paste(event, view) {
       return insertImages(view, imagesFrom(event.clipboardData));

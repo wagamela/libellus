@@ -218,12 +218,22 @@
   border: 0;
 }
 
-/* Pasted images. The reference line stays visible above the picture, so an
-   image is deleted the same way any other line is. Sized in `max-` terms only:
-   nothing here animates, and the widget never re-measures on hover. */
+/* Pasted images. The picture stands in for its reference text, so the line
+   reads as the image itself. Sized in `max-` terms only: nothing here
+   animates, and the widget never re-measures on hover. */
 .cm-editor .cm-image {
   padding: 4px 22px 10px;
   display: flex;
+}
+/* A reference among other text is replaced where it stands, so it has to sit
+   on the line rather than own it. */
+.cm-editor .cm-image-inline {
+  display: inline-block;
+  padding: 0;
+  vertical-align: text-bottom;
+}
+.cm-editor .cm-image-inline img {
+  max-height: 9rem;
 }
 .cm-editor .cm-image img {
   max-width: 100%;
