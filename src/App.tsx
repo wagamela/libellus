@@ -14,6 +14,7 @@ export default function App() {
   const store = useWorkspace();
   const [palette, setPalette] = useState<PaletteMode>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
 
   useEffect(() => {
     void store.init();
@@ -25,8 +26,24 @@ export default function App() {
   const armed = confirmDelete !== null && confirmDelete === store.activeTab;
   const tabs = store.openTabs.map((id) => store.docs[id]).filter(Boolean);
 
-  const newNote = useCallback(() => store.createDoc("note"), [store]);
-  const newSnippet = useCallback(() => store.createDoc("snippet"), [store]);
+  const focusEditor = useCallback(() => {
+    document.querySelector<HTMLElement>(".cm-content")?.focus();
+  }, []);
+  // A new document is named before it is written: its tab opens straight into
+  // the rename field, so nothing has to sit under a placeholder title.
+  const newNote = useCallback(() => setRenaming(store.createDoc("note")), [store]);
+  const newSnippet = useCallback(() => setRenaming(store.createDoc("snippet")), [store]);
+  const renameActive = useCallback(() => {
+    if (store.activeTab) setRenaming(store.activeTab);
+  }, [store]);
+  const endRename = useCallback(
+    (id: string, title: string | null) => {
+      if (title !== null) store.rename(id, title);
+      setRenaming(null);
+      focusEditor();
+    },
+    [store, focusEditor],
+  );
   const save = useCallback(() => void store.flush(), [store]);
   const saveAs = useCallback(() => {
     if (store.activeTab) void store.saveAs(store.activeTab);
@@ -57,6 +74,12 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      // F2 is the desktop convention for rename and carries no modifier.
+      if (event.key === "F2") {
+        event.preventDefault();
+        renameActive();
+        return;
+      }
       const mod = event.ctrlKey || event.metaKey;
       if (!mod) return;
       const key = event.key.toLowerCase();
@@ -87,7 +110,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, store]);
+  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, store]);
 
   // Persist on the way out so an autosave in flight is never lost.
   useEffect(() => {
@@ -104,6 +127,7 @@ export default function App() {
       { id: "save", label: "save", hint: "Ctrl S", run: save },
       { id: "save-as", label: "save as…", hint: "Ctrl Shift S", run: saveAs },
       { id: "find", label: "find in document", hint: "Ctrl F", run: findInDoc },
+      { id: "rename", label: "rename tab", hint: "F2", run: renameActive },
       { id: "close", label: "close tab", hint: "Ctrl W", run: closeActive },
       {
         id: "reopen",
@@ -120,7 +144,7 @@ export default function App() {
       { id: "next", label: "next tab", hint: "Ctrl Tab", run: () => store.cycleTab(1) },
       { id: "prev", label: "previous tab", hint: "Ctrl Shift Tab", run: () => store.cycleTab(-1) },
     ],
-    [newNote, newSnippet, save, saveAs, findInDoc, closeActive, reopenTab, deleteActive, armed, activeDoc, store],
+    [newNote, newSnippet, save, saveAs, findInDoc, closeActive, reopenTab, renameActive, deleteActive, armed, activeDoc, store],
   );
 
   const buildCommands = useCallback(
@@ -192,11 +216,17 @@ export default function App() {
           disabled: !activeDoc,
         },
         {
+          label: "Rename Tab",
+          shortcut: "F2",
+          action: renameActive,
+          disabled: !activeDoc,
+          separatorBefore: true,
+        },
+        {
           label: "Close Tab",
           shortcut: "Ctrl W",
           action: closeActive,
           disabled: !activeDoc,
-          separatorBefore: true,
         },
         {
           label: "Reopen Closed Tab",
@@ -253,9 +283,12 @@ export default function App() {
           tabs={tabs}
           activeId={store.activeTab}
           dirty={store.dirty}
+          renamingId={renaming}
           onSelect={store.activate}
           onClose={store.closeTab}
           onNew={newNote}
+          onRenameStart={setRenaming}
+          onRenameEnd={endRename}
         />
       )}
       <div className="flex min-h-0 flex-1 flex-col">
@@ -268,6 +301,7 @@ export default function App() {
               doc={activeDoc}
               onChange={(body) => store.updateBody(activeDoc.id, body)}
               onSave={save}
+              autoFocus={renaming === null}
             />
           </div>
         ) : (

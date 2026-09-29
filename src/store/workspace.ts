@@ -204,7 +204,13 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     },
 
     rename(id, title) {
-      touch(id, { title: title.trim() || "untitled", autoTitle: false });
+      const doc = get().docs[id];
+      if (!doc) return;
+      const named = title.trim();
+      // Clearing the name hands the tab back to the first line of the body
+      // rather than stranding the document on a placeholder.
+      if (!named) touch(id, { title: deriveTitle(doc.body, doc.kind), autoTitle: true });
+      else touch(id, { title: named, autoTitle: false });
     },
 
     setLanguage(id, language) {

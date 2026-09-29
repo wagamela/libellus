@@ -15,7 +15,9 @@ shell and the editor. See `project_spec.md` for the full product scope and
   (TypeScript, JavaScript, JSON, Python, Rust, SQL, plain text)
 - Opens straight into the document you last worked on (a fresh note on a first
   run), with the caret already in the editor — there is no landing page
-- Titles derived from the first line of the document and shown on its tab
+- Named tabs: a new document opens straight into its rename field, and any tab
+  can be renamed later by double-clicking it, right-clicking it, or `F2`. A
+  name left empty hands the tab back to the first line of the document
 - Command palette (`Ctrl K`) and quick open with local search over titles and
   bodies (`Ctrl P`)
 - Paste (or drop) images into a document: each is stored as a file beside the
@@ -65,6 +67,7 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 | Save as          | `Ctrl Shift S` |
 | Find in document | `Ctrl F`       |
 | Paste image      | `Ctrl V`       |
+| Rename tab       | `F2`           |
 | Close tab        | `Ctrl W`       |
 | Reopen closed tab| `Ctrl Shift T` |
 | Next tab         | `Ctrl Tab`     |

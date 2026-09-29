@@ -27,6 +27,9 @@ interface EditorProps {
   doc: Doc;
   onChange: (body: string) => void;
   onSave: () => void;
+  /** False while the tab is being named, so the editor does not pull the
+   *  caret out of the rename field as a new document mounts. */
+  autoFocus?: boolean;
 }
 
 const languageConf = new Compartment();
@@ -39,13 +42,15 @@ function gutterFor(doc: Doc) {
     : [];
 }
 
-export function Editor({ doc, onChange, onSave }: EditorProps) {
+export function Editor({ doc, onChange, onSave, autoFocus = true }: EditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView>();
   const onChangeRef = useRef(onChange);
   const onSaveRef = useRef(onSave);
+  const autoFocusRef = useRef(autoFocus);
   onChangeRef.current = onChange;
   onSaveRef.current = onSave;
+  autoFocusRef.current = autoFocus;
 
   useEffect(() => {
     if (!host.current) return;
@@ -107,7 +112,7 @@ export function Editor({ doc, onChange, onSave }: EditorProps) {
         ],
       }),
     );
-    instance.focus();
+    if (autoFocusRef.current) instance.focus();
     // Only the document identity should rebuild the state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc.id]);
