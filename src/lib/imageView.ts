@@ -91,7 +91,7 @@ const imageField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
-/** Stores the files and writes one reference line per image at the cursor. */
+/** Stores the files and writes a reference per image at the cursor. */
 function insertImages(view: EditorView, files: File[]): boolean {
   if (files.length === 0) return false;
   void (async () => {
@@ -100,8 +100,13 @@ function insertImages(view: EditorView, files: File[]): boolean {
       // The selection is read again per image: earlier insertions moved it.
       const { from, to } = view.state.selection.main;
       const line = view.state.doc.lineAt(from);
-      const lead = line.text.slice(0, from - line.from).trim() === "" ? "" : "\n";
-      const insert = `${lead}![image](libellus:${name})\n`;
+      // An image is inserted exactly where the caret is, the way pasted text
+      // would be, and the caret stays beside it — so a second image lands next
+      // to the first rather than a line below. The only thing added is a space
+      // between two of them, which is what lets a row of images wrap.
+      const before = from > line.from ? line.text[from - line.from - 1] : "";
+      const lead = before && before !== " " ? " " : "";
+      const insert = `${lead}![image](libellus:${name})`;
       view.dispatch({
         changes: { from, to, insert },
         selection: { anchor: from + insert.length },

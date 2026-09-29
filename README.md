@@ -18,8 +18,9 @@ shell and the editor. See `project_spec.md` for the full product scope and
 - Titles derived from the first line of the document and shown on its tab
 - Command palette (`Ctrl K`) and quick open with local search over titles and
   bodies (`Ctrl P`)
-- Paste (or drop) an image into a document: it is stored as a file beside the
-  workspace and shown inline under its reference line
+- Paste (or drop) images into a document: each is stored as a file beside the
+  workspace and drawn in place of its reference, wherever the caret is — one
+  to a line, or several side by side
 - Autosave with explicit `Ctrl S`, and modified / saving / saved states
 - `Save As` (`Ctrl Shift S`, also in the File menu and the command palette):
   writes a copy of the open document anywhere on disk through a native file
