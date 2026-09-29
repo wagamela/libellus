@@ -21,6 +21,8 @@ shell and the editor. See `project_spec.md` for the full product scope and
 - Paste (or drop) images into a document: each is stored as a file beside the
   workspace and drawn in place of its reference, wherever the caret is — one
   to a line, or several side by side
+- Closing a tab is undoable: `Ctrl Shift T` reopens the most recently closed
+  tab in the position it held, up to twenty closes back within a session
 - Autosave with explicit `Ctrl S`, and modified / saving / saved states
 - `Save As` (`Ctrl Shift S`, also in the File menu and the command palette):
   writes a copy of the open document anywhere on disk through a native file
@@ -64,6 +66,7 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 | Find in document | `Ctrl F`       |
 | Paste image      | `Ctrl V`       |
 | Close tab        | `Ctrl W`       |
+| Reopen closed tab| `Ctrl Shift T` |
 | Next tab         | `Ctrl Tab`     |
 
 ## Layout

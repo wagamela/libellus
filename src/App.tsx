@@ -34,6 +34,7 @@ export default function App() {
   const closeActive = useCallback(() => {
     if (store.activeTab) store.closeTab(store.activeTab);
   }, [store]);
+  const reopenTab = useCallback(() => store.reopenTab(), [store]);
   const deleteActive = useCallback(() => {
     const id = store.activeTab;
     if (!id) return;
@@ -76,6 +77,9 @@ export default function App() {
       } else if (key === "w") {
         event.preventDefault();
         closeActive();
+      } else if (key === "t" && event.shiftKey) {
+        event.preventDefault();
+        reopenTab();
       } else if (key === "tab") {
         event.preventDefault();
         store.cycleTab(event.shiftKey ? -1 : 1);
@@ -83,7 +87,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [newNote, newSnippet, save, saveAs, closeActive, store]);
+  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, store]);
 
   // Persist on the way out so an autosave in flight is never lost.
   useEffect(() => {
@@ -102,6 +106,12 @@ export default function App() {
       { id: "find", label: "find in document", hint: "Ctrl F", run: findInDoc },
       { id: "close", label: "close tab", hint: "Ctrl W", run: closeActive },
       {
+        id: "reopen",
+        label: "reopen closed tab",
+        hint: store.closedTabs.length > 0 ? "Ctrl Shift T" : "nothing to reopen",
+        run: reopenTab,
+      },
+      {
         id: "delete",
         label: armed ? "delete document — press again to confirm" : "delete document",
         hint: activeDoc ? "" : "no document",
@@ -110,7 +120,7 @@ export default function App() {
       { id: "next", label: "next tab", hint: "Ctrl Tab", run: () => store.cycleTab(1) },
       { id: "prev", label: "previous tab", hint: "Ctrl Shift Tab", run: () => store.cycleTab(-1) },
     ],
-    [newNote, newSnippet, save, saveAs, findInDoc, closeActive, deleteActive, armed, activeDoc, store],
+    [newNote, newSnippet, save, saveAs, findInDoc, closeActive, reopenTab, deleteActive, armed, activeDoc, store],
   );
 
   const buildCommands = useCallback(
@@ -189,7 +199,14 @@ export default function App() {
           separatorBefore: true,
         },
         {
+          label: "Reopen Closed Tab",
+          shortcut: "Ctrl Shift T",
+          action: reopenTab,
+          disabled: store.closedTabs.length === 0,
+        },
+        {
           label: armed ? "Delete Document — Confirm" : "Delete Document",
+          separatorBefore: true,
           action: deleteActive,
           disabled: !activeDoc,
         },

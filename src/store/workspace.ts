@@ -6,6 +6,12 @@ import { newId, type Doc, type DocKind, type Language } from "../lib/types";
 
 export type SaveStatus = "idle" | "modified" | "saving" | "saved" | "error";
 
+/** A tab that was closed, remembered well enough to put it back where it was. */
+interface ClosedTab {
+  id: string;
+  index: number;
+}
+
 interface WorkspaceState {
   docs: Record<string, Doc>;
   order: string[];
@@ -14,11 +20,14 @@ interface WorkspaceState {
   dirty: Set<string>;
   status: SaveStatus;
   ready: boolean;
+  /** Most recently closed last: `reopenTab` pops from the end. */
+  closedTabs: ClosedTab[];
 
   init: () => Promise<void>;
   createDoc: (kind: DocKind, seed?: Partial<Doc>) => string;
   openDoc: (id: string) => void;
   closeTab: (id: string) => void;
+  reopenTab: () => void;
   activate: (id: string) => void;
   cycleTab: (delta: number) => void;
   updateBody: (id: string, body: string) => void;
@@ -33,6 +42,10 @@ const DEFAULT_LANGUAGE: Record<DocKind, Language> = {
   note: "markdown",
   snippet: "typescript",
 };
+
+/** How far back Ctrl+Shift+T can reach. Deep enough to undo a stray run of
+ *  closes, shallow enough that it stays a recovery tool and not a history. */
+const CLOSED_LIMIT = 20;
 
 /** Turns the first meaningful line of a document into a tab-sized title. */
 function deriveTitle(body: string, kind: DocKind): string {
@@ -76,6 +89,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     dirty: new Set<string>(),
     status: "idle",
     ready: false,
+    closedTabs: [],
 
     async init() {
       const store = await loadStore();
@@ -133,7 +147,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     },
 
     closeTab(id) {
-      const { openTabs, activeTab } = get();
+      const { openTabs, activeTab, closedTabs } = get();
       const index = openTabs.indexOf(id);
       if (index === -1) return;
       const next = openTabs.filter((t) => t !== id);
@@ -141,8 +155,30 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         openTabs: next,
         activeTab:
           activeTab === id ? next[Math.min(index, next.length - 1)] ?? null : activeTab,
+        // Closing a tab is the one destructive-feeling action that takes no
+        // confirmation, so it is always undoable for the rest of the session.
+        closedTabs: [...closedTabs.filter((c) => c.id !== id), { id, index }].slice(
+          -CLOSED_LIMIT,
+        ),
       });
       schedule();
+    },
+
+    reopenTab() {
+      const { docs, openTabs, closedTabs } = get();
+      const remaining = [...closedTabs];
+      // Entries go stale: the document may have been deleted, or reopened by
+      // hand. Skip past those rather than making the shortcut do nothing.
+      while (remaining.length > 0) {
+        const entry = remaining.pop()!;
+        if (!docs[entry.id] || openTabs.includes(entry.id)) continue;
+        const next = [...openTabs];
+        next.splice(Math.min(entry.index, next.length), 0, entry.id);
+        set({ openTabs: next, activeTab: entry.id, closedTabs: remaining });
+        schedule();
+        return;
+      }
+      set({ closedTabs: remaining });
     },
 
     activate(id) {
@@ -193,6 +229,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         order: get().order.filter((t) => t !== id),
         openTabs,
         activeTab: get().activeTab === id ? openTabs[openTabs.length - 1] ?? null : get().activeTab,
+        // A deleted document must not come back through Ctrl+Shift+T.
+        closedTabs: get().closedTabs.filter((c) => c.id !== id),
       });
       void get().flush();
     },
