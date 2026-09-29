@@ -21,6 +21,9 @@ shell and the editor. See `project_spec.md` for the full product scope and
 - Paste (or drop) an image into a document: it is stored as a file beside the
   workspace and shown inline under its reference line
 - Autosave with explicit `Ctrl S`, and modified / saving / saved states
+- `Save As` (`Ctrl Shift S`, also in the File menu and the command palette):
+  writes a copy of the open document anywhere on disk through a native file
+  dialog, named after its title and the language's extension
 - Persistence in the OS app-data directory via an atomic write, with a
   localStorage fallback when the frontend runs in a plain browser (pasted
   images sit in an `images/` directory next to the store, or in IndexedDB in
@@ -56,6 +59,7 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 | New note         | `Ctrl N`       |
 | New snippet      | `Ctrl Shift N` |
 | Save             | `Ctrl S`       |
+| Save as          | `Ctrl Shift S` |
 | Find in document | `Ctrl F`       |
 | Paste image      | `Ctrl V`       |
 | Close tab        | `Ctrl W`       |
@@ -66,8 +70,9 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 ```text
 src/
   components/   MenuBar, TabBar, Editor, CommandPalette, StatusBar
-  lib/          types, storage, images, search, editor theme and lazy language
-                loading
+  lib/          types, storage, images, files, search, editor theme and lazy
+                language loading
   store/        zustand workspace store (documents, tabs, autosave)
-src-tauri/      Rust shell; load_store / save_store and the image commands
+src-tauri/      Rust shell; load_store / save_store, the image commands and
+                save_document_as
 ```

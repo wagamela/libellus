@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { loadStore, saveStore } from "../lib/storage";
+import { saveDocumentAs } from "../lib/files";
 import { IMAGE_REF, deleteImage, imageRefs } from "../lib/images";
 import { newId, type Doc, type DocKind, type Language } from "../lib/types";
 
@@ -25,6 +26,7 @@ interface WorkspaceState {
   setLanguage: (id: string, language: Language) => void;
   deleteDoc: (id: string) => void;
   flush: () => Promise<void>;
+  saveAs: (id: string) => Promise<void>;
 }
 
 const DEFAULT_LANGUAGE: Record<DocKind, Language> = {
@@ -193,6 +195,20 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         activeTab: get().activeTab === id ? openTabs[openTabs.length - 1] ?? null : get().activeTab,
       });
       void get().flush();
+    },
+
+    /** A copy of the document, written wherever the user chooses. */
+    async saveAs(id) {
+      const doc = get().docs[id];
+      if (!doc) return;
+      // The workspace copy is committed first, so what lands on disk and what
+      // is saved here can never disagree.
+      await get().flush();
+      try {
+        await saveDocumentAs(doc);
+      } catch {
+        set({ status: "error" });
+      }
     },
 
     async flush() {

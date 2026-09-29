@@ -28,6 +28,9 @@ export default function App() {
   const newNote = useCallback(() => store.createDoc("note"), [store]);
   const newSnippet = useCallback(() => store.createDoc("snippet"), [store]);
   const save = useCallback(() => void store.flush(), [store]);
+  const saveAs = useCallback(() => {
+    if (store.activeTab) void store.saveAs(store.activeTab);
+  }, [store]);
   const closeActive = useCallback(() => {
     if (store.activeTab) store.closeTab(store.activeTab);
   }, [store]);
@@ -68,7 +71,8 @@ export default function App() {
         else newNote();
       } else if (key === "s") {
         event.preventDefault();
-        save();
+        if (event.shiftKey) saveAs();
+        else save();
       } else if (key === "w") {
         event.preventDefault();
         closeActive();
@@ -79,7 +83,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [newNote, newSnippet, save, closeActive, store]);
+  }, [newNote, newSnippet, save, saveAs, closeActive, store]);
 
   // Persist on the way out so an autosave in flight is never lost.
   useEffect(() => {
@@ -94,6 +98,7 @@ export default function App() {
       { id: "snippet", label: "new snippet", hint: "Ctrl Shift N", run: newSnippet },
       { id: "open", label: "quick open document", hint: "Ctrl P", run: () => setPalette("open") },
       { id: "save", label: "save", hint: "Ctrl S", run: save },
+      { id: "save-as", label: "save as…", hint: "Ctrl Shift S", run: saveAs },
       { id: "find", label: "find in document", hint: "Ctrl F", run: findInDoc },
       { id: "close", label: "close tab", hint: "Ctrl W", run: closeActive },
       {
@@ -105,7 +110,7 @@ export default function App() {
       { id: "next", label: "next tab", hint: "Ctrl Tab", run: () => store.cycleTab(1) },
       { id: "prev", label: "previous tab", hint: "Ctrl Shift Tab", run: () => store.cycleTab(-1) },
     ],
-    [newNote, newSnippet, save, findInDoc, closeActive, deleteActive, armed, activeDoc, store],
+    [newNote, newSnippet, save, saveAs, findInDoc, closeActive, deleteActive, armed, activeDoc, store],
   );
 
   const buildCommands = useCallback(
@@ -170,6 +175,12 @@ export default function App() {
           separatorBefore: true,
         },
         { label: "Save", shortcut: "Ctrl S", action: save, disabled: !activeDoc },
+        {
+          label: "Save As…",
+          shortcut: "Ctrl Shift S",
+          action: saveAs,
+          disabled: !activeDoc,
+        },
         {
           label: "Close Tab",
           shortcut: "Ctrl W",

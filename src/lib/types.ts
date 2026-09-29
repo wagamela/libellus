@@ -51,3 +51,15 @@ export const LANGUAGES: Language[] = [
 export function newId(): string {
   return crypto.randomUUID();
 }
+
+/** The file extension a document is offered under when it is saved out. */
+export const LANGUAGE_EXTENSION: Record<Language, string> = {
+  markdown: "md",
+  typescript: "ts",
+  javascript: "js",
+  json: "json",
+  python: "py",
+  rust: "rs",
+  sql: "sql",
+  text: "txt",
+};

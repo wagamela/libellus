@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use tauri::Manager;
+use tauri_plugin_dialog::DialogExt;
 
 /// The whole workspace lives in one JSON file inside the OS app-data
 /// directory. SQLite replaces this later; the command surface stays the same.
@@ -104,15 +105,47 @@ fn delete_image(app: tauri::AppHandle, name: String) -> Result<(), String> {
     }
 }
 
+/// "save as" hands a copy of a document to the user's own filesystem. Both the
+/// picker and the write live here, so the frontend never needs a filesystem
+/// scope and the capability set stays `core:default`. Returns the chosen path,
+/// or `None` when the dialog was cancelled.
+///
+/// `#[tauri::command(async)]` matters: the blocking dialog must not run on the
+/// main thread.
+#[tauri::command(async)]
+fn save_document_as(
+    app: tauri::AppHandle,
+    name: String,
+    extension: String,
+    contents: String,
+) -> Result<Option<String>, String> {
+    let picked = app
+        .dialog()
+        .file()
+        .set_title("save as")
+        .set_file_name(&name)
+        .add_filter(&extension, &[extension.as_str()])
+        .blocking_save_file();
+
+    let Some(picked) = picked else { return Ok(None) };
+    let path = picked
+        .into_path()
+        .map_err(|e| format!("cannot resolve path: {e}"))?;
+    fs::write(&path, contents.as_bytes()).map_err(|e| format!("cannot write file: {e}"))?;
+    Ok(Some(path.display().to_string()))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             load_store,
             save_store,
             save_image,
             load_image,
-            delete_image
+            delete_image,
+            save_document_as
         ])
         .run(tauri::generate_context!())
         .expect("error while running libellus");
