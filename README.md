@@ -23,6 +23,9 @@ shell and the editor. See `project_spec.md` for the full product scope and
 - Paste (or drop) images into a document: each is stored as a file beside the
   workspace and drawn in place of its reference, wherever the caret is — one
   to a line, or several side by side
+- Tabs are sorted by hand: drag one along the strip and the others part around
+  it, or move the active tab with `Ctrl Shift PageUp` / `Ctrl Shift PageDown`.
+  The order is part of the workspace and comes back on the next launch
 - Closing a tab is undoable: `Ctrl Shift T` reopens the most recently closed
   tab in the position it held, up to twenty closes back within a session
 - Autosave with explicit `Ctrl S`, and modified / saving / saved states
@@ -71,6 +74,9 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 | Close tab        | `Ctrl W`       |
 | Reopen closed tab| `Ctrl Shift T` |
 | Next tab         | `Ctrl Tab`     |
+| Previous tab     | `Ctrl Shift Tab` |
+| Move tab left    | `Ctrl Shift PageUp` |
+| Move tab right   | `Ctrl Shift PageDown` |
 
 ## Layout
 

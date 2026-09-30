@@ -52,6 +52,16 @@ export default function App() {
     if (store.activeTab) store.closeTab(store.activeTab);
   }, [store]);
   const reopenTab = useCallback(() => store.reopenTab(), [store]);
+  // Keyboard counterpart to dragging a tab: walks the active tab along the
+  // strip one place at a time.
+  const moveActiveTab = useCallback(
+    (delta: number) => {
+      const id = store.activeTab;
+      if (!id) return;
+      store.moveTab(id, store.openTabs.indexOf(id) + delta);
+    },
+    [store],
+  );
   const deleteActive = useCallback(() => {
     const id = store.activeTab;
     if (!id) return;
@@ -106,11 +116,15 @@ export default function App() {
       } else if (key === "tab") {
         event.preventDefault();
         store.cycleTab(event.shiftKey ? -1 : 1);
+      } else if (event.shiftKey && (key === "pageup" || key === "pagedown")) {
+        // Shift distinguishes moving the tab from merely walking to it.
+        event.preventDefault();
+        moveActiveTab(key === "pageup" ? -1 : 1);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, store]);
+  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, moveActiveTab, store]);
 
   // Persist on the way out so an autosave in flight is never lost.
   useEffect(() => {
@@ -143,8 +157,20 @@ export default function App() {
       },
       { id: "next", label: "next tab", hint: "Ctrl Tab", run: () => store.cycleTab(1) },
       { id: "prev", label: "previous tab", hint: "Ctrl Shift Tab", run: () => store.cycleTab(-1) },
+      {
+        id: "move-left",
+        label: "move tab left",
+        hint: "Ctrl Shift PageUp",
+        run: () => moveActiveTab(-1),
+      },
+      {
+        id: "move-right",
+        label: "move tab right",
+        hint: "Ctrl Shift PageDown",
+        run: () => moveActiveTab(1),
+      },
     ],
-    [newNote, newSnippet, save, saveAs, findInDoc, closeActive, reopenTab, renameActive, deleteActive, armed, activeDoc, store],
+    [newNote, newSnippet, save, saveAs, findInDoc, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, armed, activeDoc, store],
   );
 
   const buildCommands = useCallback(
@@ -271,6 +297,19 @@ export default function App() {
           action: () => store.cycleTab(-1),
           disabled: tabs.length < 2,
         },
+        {
+          label: "Move Tab Left",
+          shortcut: "Ctrl Shift PageUp",
+          action: () => moveActiveTab(-1),
+          disabled: tabs.length < 2,
+          separatorBefore: true,
+        },
+        {
+          label: "Move Tab Right",
+          shortcut: "Ctrl Shift PageDown",
+          action: () => moveActiveTab(1),
+          disabled: tabs.length < 2,
+        },
       ],
     },
   ];
@@ -289,6 +328,7 @@ export default function App() {
           onNew={newNote}
           onRenameStart={setRenaming}
           onRenameEnd={endRename}
+          onMove={store.moveTab}
         />
       )}
       <div className="flex min-h-0 flex-1 flex-col">

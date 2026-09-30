@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Doc } from "../lib/types";
 import { docLabel } from "../store/workspace";
 
@@ -14,7 +14,28 @@ interface TabBarProps {
   onNew: () => void;
   onRenameStart: (id: string) => void;
   onRenameEnd: (id: string, title: string | null) => void;
+  /** Drops the dragged tab at `index` in the strip. */
+  onMove: (id: string, index: number) => void;
 }
+
+/** A drag in progress. Kept in a ref rather than state: the tab follows the
+ *  pointer by writing `transform` straight onto the element, so a drag costs
+ *  no React renders except the reorders it causes. */
+interface Drag {
+  id: string;
+  /** Where inside the tab the pointer grabbed it. */
+  grabOffset: number;
+  /** Index the tab started at, so Escape can put it back. */
+  origin: number;
+  startX: number;
+  pointerX: number;
+  /** A press only becomes a drag once it has travelled far enough. */
+  active: boolean;
+}
+
+/** How far the pointer must travel before a press on a tab counts as a drag
+ *  rather than a click, so selecting a tab never nudges the order. */
+const DRAG_THRESHOLD = 4;
 
 /** The tab label while it is being edited. Enter or blur commits, Escape
  *  abandons; an empty name lets the body title the tab again. */
@@ -66,8 +87,114 @@ export function TabBar({
   onNew,
   onRenameStart,
   onRenameEnd,
+  onMove,
 }: TabBarProps) {
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  const strip = useRef<HTMLDivElement>(null);
+  const tabEls = useRef(new Map<string, HTMLElement>());
+  const drag = useRef<Drag | null>(null);
+  /** The translation currently written onto the dragged tab, so its untranslated
+   *  position can be recovered from a measured rect. */
+  const shift = useRef(0);
+  const frame = useRef(0);
+  // The pointer handlers live for the whole drag; these keep them reading the
+  // current tab list without being torn down and rebuilt on every render.
+  const latest = useRef({ tabs, onMove });
+  latest.current = { tabs, onMove };
+
+  const endDrag = useCallback((cancel: boolean) => {
+    const d = drag.current;
+    drag.current = null;
+    if (frame.current) cancelAnimationFrame(frame.current);
+    frame.current = 0;
+    if (!d) return;
+    const el = tabEls.current.get(d.id);
+    if (el) el.style.transform = "";
+    shift.current = 0;
+    if (!d.active) return;
+    if (cancel) latest.current.onMove(d.id, d.origin);
+    setDraggingId(null);
+  }, []);
+
+  useEffect(() => {
+    // One measure-and-place pass per frame: the pointer can fire far more
+    // often than that, and layout reads do not belong on every event.
+    const step = () => {
+      frame.current = 0;
+      const d = drag.current;
+      if (!d?.active) return;
+      const el = tabEls.current.get(d.id);
+      const bounds = strip.current?.getBoundingClientRect();
+      if (!el || !bounds) return;
+
+      const rect = el.getBoundingClientRect();
+      const natural = rect.left - shift.current;
+      // The tab tracks the pointer but never leaves the strip.
+      const left = Math.max(
+        bounds.left,
+        Math.min(d.pointerX - d.grabOffset, bounds.right - rect.width),
+      );
+      shift.current = left - natural;
+      // Only `transform` moves — nothing here changes layout, so dragging
+      // never reflows the strip.
+      el.style.transform = `translateX(${shift.current}px)`;
+
+      // Tabs are laid out left to right, so their centres are ordered and the
+      // dragged tab belongs wherever it has covered half of a neighbour. The
+      // comparison uses the leading edge — the left edge going left, the right
+      // edge going right — never the dragged tab's own centre: a tab wider
+      // than its neighbour can be pinned against the end of the strip with its
+      // centre still short of that neighbour's, which would leave the first
+      // and last places unreachable for the widest tab.
+      const ids = latest.current.tabs.map((t) => t.id);
+      const from = ids.indexOf(d.id);
+      const right = left + rect.width;
+      let target = from;
+      for (let i = 0; i < ids.length; i++) {
+        if (i === from) continue;
+        const other = tabEls.current.get(ids[i]);
+        if (!other) continue;
+        const r = other.getBoundingClientRect();
+        const c = r.left + r.width / 2;
+        if (i < from && left < c) target = Math.min(target, i);
+        else if (i > from && right > c) target = Math.max(target, i);
+      }
+      if (target !== from) {
+        latest.current.onMove(d.id, target);
+        // The strip re-lays out on the next frame; re-place the tab then so it
+        // stays under the pointer even if the pointer has stopped moving.
+        frame.current = requestAnimationFrame(step);
+      }
+    };
+
+    const onPointerMove = (event: MouseEvent) => {
+      const d = drag.current;
+      if (!d) return;
+      d.pointerX = event.clientX;
+      if (!d.active) {
+        if (Math.abs(event.clientX - d.startX) < DRAG_THRESHOLD) return;
+        d.active = true;
+        setDraggingId(d.id);
+      }
+      if (!frame.current) frame.current = requestAnimationFrame(step);
+    };
+    const onPointerUp = () => endDrag(false);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && drag.current) endDrag(true);
+    };
+
+    window.addEventListener("mousemove", onPointerMove);
+    window.addEventListener("mouseup", onPointerUp);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousemove", onPointerMove);
+      window.removeEventListener("mouseup", onPointerUp);
+      window.removeEventListener("keydown", onKey);
+      if (frame.current) cancelAnimationFrame(frame.current);
+    };
+  }, [endDrag]);
 
   useEffect(() => {
     if (!menu) return;
@@ -91,13 +218,21 @@ export function TabBar({
     : [];
 
   return (
-    <div className="flex h-9 shrink-0 items-stretch gap-px overflow-x-auto bg-tabbar">
-      {tabs.map((doc) => {
+    <div
+      ref={strip}
+      className="flex h-9 shrink-0 items-stretch gap-px overflow-x-auto bg-tabbar"
+    >
+      {tabs.map((doc, index) => {
         const active = doc.id === activeId;
         const renaming = doc.id === renamingId;
+        const dragged = doc.id === draggingId;
         return (
           <div
             key={doc.id}
+            ref={(el) => {
+              if (el) tabEls.current.set(doc.id, el);
+              else tabEls.current.delete(doc.id);
+            }}
             role="tab"
             aria-selected={active}
             tabIndex={0}
@@ -107,6 +242,17 @@ export function TabBar({
                 onClose(doc.id);
               } else if (event.button === 0) {
                 onSelect(doc.id);
+                // Arm a drag. It only becomes one once the pointer has moved
+                // past the threshold, so a plain click still just selects.
+                if (renaming) return;
+                drag.current = {
+                  id: doc.id,
+                  grabOffset: event.clientX - event.currentTarget.getBoundingClientRect().left,
+                  origin: index,
+                  startX: event.clientX,
+                  pointerX: event.clientX,
+                  active: false,
+                };
               }
             }}
             onDoubleClick={() => onRenameStart(doc.id)}
@@ -120,11 +266,17 @@ export function TabBar({
               else if (event.key === "F2") onRenameStart(doc.id);
             }}
             // The selected tab is the darker of the pair; the 1px gap between
-            // tabs is the strip showing through.
+            // tabs is the strip showing through. A tab being dragged is lifted
+            // out of that strip — above its neighbours, under the same shadow
+            // the menus cast — and only `transform` ever moves it.
             className={`group relative flex max-w-60 min-w-28 items-center gap-2 px-3 text-[12px] ${
               active
                 ? "bg-tab-active text-text"
                 : "bg-tab text-dim hover:bg-tab-hover hover:text-text active:bg-pressed"
+            } ${
+              dragged
+                ? "z-10 cursor-grabbing bg-tab-active text-text shadow-[0_6px_18px_#00000066]"
+                : ""
             }`}
           >
             <span className="text-[10px] text-muted">

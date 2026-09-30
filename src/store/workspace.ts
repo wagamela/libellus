@@ -30,6 +30,7 @@ interface WorkspaceState {
   reopenTab: () => void;
   activate: (id: string) => void;
   cycleTab: (delta: number) => void;
+  moveTab: (id: string, toIndex: number) => void;
   updateBody: (id: string, body: string) => void;
   rename: (id: string, title: string) => void;
   setLanguage: (id: string, language: Language) => void;
@@ -183,6 +184,22 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     activate(id) {
       set({ activeTab: id });
+      schedule();
+    },
+
+    /** Puts an open tab at `toIndex`, closing the gap it left behind. The tab
+     *  strip is the user's own ordering, so this is the only thing that
+     *  changes it and it persists with the rest of `openTabs`. */
+    moveTab(id, toIndex) {
+      const { openTabs } = get();
+      const from = openTabs.indexOf(id);
+      if (from === -1) return;
+      const to = Math.max(0, Math.min(toIndex, openTabs.length - 1));
+      if (to === from) return;
+      const next = [...openTabs];
+      next.splice(from, 1);
+      next.splice(to, 0, id);
+      set({ openTabs: next });
       schedule();
     },
 
