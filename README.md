@@ -19,7 +19,9 @@ shell and the editor. See `project_spec.md` for the full product scope and
   can be renamed later by double-clicking it, right-clicking it, or `F2`. A
   name left empty hands the tab back to the first line of the document
 - Command palette (`Ctrl K`) and quick open with local search over titles and
-  bodies (`Ctrl P`)
+  bodies (`Ctrl P`). Each quick-open row carries a delete control (`Ctrl D` on
+  the highlighted row): it arms on the first press and deletes on the second,
+  and the palette stays open so several documents can be cleared in one pass
 - Paste (or drop) images into a document: each is stored as a file beside the
   workspace and drawn in place of its reference, wherever the caret is — one
   to a line, or several side by side

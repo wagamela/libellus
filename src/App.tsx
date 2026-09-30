@@ -218,6 +218,9 @@ export default function App() {
           detail: excerpt,
           hint: doc.kind === "note" ? "note" : doc.language,
           run: () => store.openDoc(doc.id),
+          // Quick open is the only list of every document, so it is also where
+          // one can be thrown away. The palette asks before it goes through.
+          remove: () => store.deleteDoc(doc.id),
         })),
     [store],
   );
