@@ -71,7 +71,8 @@ deliberately simple until SQLite FTS replaces it.
 - The palette is deliberately achromatic: dark blue-grey surfaces, white content, and a
   near-white `--color-accent`. Emphasis comes from brightness, never hue — that includes
   syntax highlighting and error states. Do not add a coloured accent or semantic hues.
-- The UI is monospace throughout and lowercase in most labels; it should read as a native
+- The UI is set in Geist (sans) throughout and lowercase in most labels; the only Geist Mono
+  in the app is the `libellus` wordmark in the top-right of the menu bar; it should read as a native
   desktop tool, not a web page.
 - The CSP in `tauri.conf.json` allows only self, inline styles, data images and data fonts.
   No network requests, no accounts, no telemetry — fonts and assets must be bundled, never

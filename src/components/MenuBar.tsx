@@ -81,7 +81,7 @@ export function MenuBar({ menus }: { menus: Menu[] }) {
           )}
         </div>
       ))}
-      <div className="flex flex-1 items-center justify-end pr-3 text-[11px] tracking-[0.25em] text-muted">
+      <div className="flex flex-1 items-center justify-end pr-3 font-mono text-[11px] tracking-[0.25em] text-muted">
         libellus
       </div>
     </div>
