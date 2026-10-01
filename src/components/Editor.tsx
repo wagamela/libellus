@@ -21,6 +21,7 @@ import { closeBrackets, closeBracketsKeymap, autocompletion } from "@codemirror/
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { loadLanguage, libellusTheme } from "../lib/editor";
 import { libellusImages } from "../lib/imageView";
+import { DEFAULT_BLOCK_LANGUAGE, libellusCodeBlocks } from "../lib/codeBlocks";
 import type { Doc } from "../lib/types";
 
 interface EditorProps {
@@ -48,9 +49,13 @@ export function Editor({ doc, onChange, onSave, autoFocus = true }: EditorProps)
   const onChangeRef = useRef(onChange);
   const onSaveRef = useRef(onSave);
   const autoFocusRef = useRef(autoFocus);
+  const docRef = useRef(doc);
   onChangeRef.current = onChange;
   onSaveRef.current = onSave;
   autoFocusRef.current = autoFocus;
+  // Read through a ref: the language a new code block opens with follows the
+  // document without the editor state being rebuilt when it changes.
+  docRef.current = doc;
 
   useEffect(() => {
     if (!host.current) return;
@@ -86,6 +91,13 @@ export function Editor({ doc, onChange, onSave, autoFocus = true }: EditorProps)
           highlightSelectionMatches(),
           EditorView.lineWrapping,
           libellusImages,
+          // A note writes prose and opens code areas inside it; a snippet is
+          // already code, so its own language is what a block starts as.
+          libellusCodeBlocks(() =>
+            docRef.current.language === "markdown"
+              ? DEFAULT_BLOCK_LANGUAGE
+              : docRef.current.language,
+          ),
           keymap.of([
             {
               key: "Mod-s",

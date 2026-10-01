@@ -252,3 +252,53 @@
   border-radius: var(--radius-sm);
   padding: 10px 12px;
 }
+
+/* Code snippet areas. A fenced region is its own surface inside the document:
+   one step darker than the workspace, inset so it reads as a block without a
+   line being drawn around it. Nothing here transitions on layout — the block
+   has a fixed inset and the copy control only ever changes colour. */
+.cm-editor .cm-code-block {
+  background: var(--color-raised);
+  margin: 0 14px;
+  padding: 0 8px;
+}
+.cm-editor .cm-code-open {
+  /* The copy control is positioned against this line. */
+  position: relative;
+  padding-top: 5px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.cm-editor .cm-code-close {
+  padding-bottom: 5px;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+/* The caret's line still reads inside a block: the active line is one step
+   lighter than the block surface rather than the editor's default wash, which
+   the darker surface would otherwise swallow. */
+.cm-editor .cm-code-block.cm-activeLine {
+  background: var(--color-tab);
+}
+/* The fences stay in the text — they are what makes the document plain
+   markdown — but they are the quietest thing in it. */
+.cm-editor .cm-code-fence {
+  color: var(--color-muted);
+}
+.cm-editor .cm-code-copy {
+  position: absolute;
+  right: 8px;
+  top: 4px;
+  z-index: 1;
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  color: var(--color-muted);
+  user-select: none;
+}
+.cm-editor .cm-code-copy:hover {
+  color: var(--color-text);
+  background: var(--color-tab-hover);
+}
+.cm-editor .cm-code-copy:active {
+  background: var(--color-pressed);
+}

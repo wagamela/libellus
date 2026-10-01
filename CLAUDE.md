@@ -55,7 +55,15 @@ is delegated to CodeMirror by dispatching a synthetic `Ctrl F` at `.cm-content`.
 
 **Editor.** CodeMirror 6. `src/lib/editor.ts` holds the theme and highlight style and loads
 language grammars on demand via dynamic `import()` — keep new languages lazy so they stay out
-of the startup bundle. Add the language to `Language`/`LANGUAGES` in `types.ts` as well.
+of the startup bundle. Add the language to `Language`/`LANGUAGES` in `types.ts` as well, and to
+`CODE_LANGUAGES` in `editor.ts` if a fenced code block should be able to use it.
+
+**Rich content is plain text.** Images (`src/lib/images.ts`, `src/lib/imageView.ts`) and code
+snippet areas (`src/lib/codeBlocks.ts`) add no fields to `Doc`: an image is a
+`![](libellus:name)` reference and a code block is an ordinary ``` fence. The editor decorates
+those spans, so the body stays markdown that saves out and searches as written, and nothing
+about this needs a store migration. Keep anything in this family the same way — a decoration
+over text the user could have typed, never a new shape in the document model.
 
 **Search.** `src/lib/search.ts` is an in-memory subsequence ranker over titles and bodies,
 deliberately simple until SQLite FTS replaces it.

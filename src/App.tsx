@@ -5,6 +5,15 @@ import { Editor } from "./components/Editor";
 import { StatusBar } from "./components/StatusBar";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
 import { searchDocs } from "./lib/search";
+import { activeEditor } from "./lib/editor";
+import {
+  BLOCK_LANGUAGES,
+  DEFAULT_BLOCK_LANGUAGE,
+  blockAtCursor,
+  codeBlockBody,
+  insertCodeBlock,
+  setCodeBlockLanguage,
+} from "./lib/codeBlocks";
 import { LANGUAGES } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
 
@@ -73,6 +82,20 @@ export default function App() {
     setConfirmDelete(null);
     store.deleteDoc(id);
   }, [store, confirmDelete]);
+  // Code blocks live in the document text, so every one of these runs against
+  // the mounted editor rather than the store.
+  const insertCode = useCallback(() => {
+    const view = activeEditor();
+    if (!view) return;
+    const language =
+      activeDoc && activeDoc.language !== "markdown" ? activeDoc.language : DEFAULT_BLOCK_LANGUAGE;
+    insertCodeBlock(() => language)(view);
+  }, [activeDoc]);
+  const copyCode = useCallback(() => {
+    const view = activeEditor();
+    const code = view ? codeBlockBody(view) : null;
+    if (code !== null) void navigator.clipboard.writeText(code);
+  }, []);
   const findInDoc = useCallback(() => {
     // CodeMirror owns in-document search; hand it the keystroke it expects.
     const content = document.querySelector<HTMLElement>(".cm-content");
@@ -110,6 +133,11 @@ export default function App() {
       } else if (key === "w") {
         event.preventDefault();
         closeActive();
+      } else if (key === "c" && event.altKey) {
+        // Ctrl Alt C rather than Ctrl Shift C: the browser claims that one for
+        // its inspector, and `npm run dev` runs in a browser.
+        event.preventDefault();
+        insertCode();
       } else if (key === "t" && event.shiftKey) {
         event.preventDefault();
         reopenTab();
@@ -124,7 +152,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, moveActiveTab, store]);
+  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, moveActiveTab, insertCode, store]);
 
   // Persist on the way out so an autosave in flight is never lost.
   useEffect(() => {
@@ -140,6 +168,7 @@ export default function App() {
       { id: "open", label: "quick open document", hint: "Ctrl P", run: () => setPalette("open") },
       { id: "save", label: "save", hint: "Ctrl S", run: save },
       { id: "save-as", label: "save as…", hint: "Ctrl Shift S", run: saveAs },
+      { id: "code", label: "insert code block", hint: "Ctrl Alt C", run: insertCode },
       { id: "find", label: "find in document", hint: "Ctrl F", run: findInDoc },
       { id: "rename", label: "rename tab", hint: "F2", run: renameActive },
       { id: "close", label: "close tab", hint: "Ctrl W", run: closeActive },
@@ -170,13 +199,31 @@ export default function App() {
         run: () => moveActiveTab(1),
       },
     ],
-    [newNote, newSnippet, save, saveAs, findInDoc, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, armed, activeDoc, store],
+    [newNote, newSnippet, save, saveAs, findInDoc, insertCode, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, armed, activeDoc, store],
   );
 
   const buildCommands = useCallback(
     (query: string): PaletteItem[] => {
       const q = query.trim().toLowerCase();
       const matched = commands.filter((command) => command.label.includes(q));
+      // Inside a code block the palette grows the actions that only make sense
+      // there: the caret keeps its place while the palette is open, so the
+      // block under it is still the one these run against.
+      const view = activeEditor();
+      const block = view ? blockAtCursor(view) : null;
+      if (block && view) {
+        for (const item of [
+          { id: "copy-code", label: "copy code block", hint: block.info || "no language", run: copyCode },
+          ...BLOCK_LANGUAGES.map((language) => ({
+            id: `block-lang-${language}`,
+            label: `set code block language: ${language}`,
+            hint: block.language === language ? "current" : "",
+            run: () => setCodeBlockLanguage(view, language),
+          })),
+        ]) {
+          if (item.label.includes(q)) matched.push(item);
+        }
+      }
       // The language selector lived in the removed header; it is a command now.
       const active = store.activeTab ? store.docs[store.activeTab] : undefined;
       if (active?.kind === "snippet") {
@@ -204,7 +251,7 @@ export default function App() {
         }));
       return [...matched, ...docs];
     },
-    [commands, store],
+    [commands, copyCode, store],
   );
 
   const buildOpen = useCallback(
@@ -274,7 +321,24 @@ export default function App() {
     {
       label: "Edit",
       items: [
-        { label: "Find in Document", shortcut: "Ctrl F", action: findInDoc, disabled: !activeDoc },
+        {
+          label: "Insert Code Block",
+          shortcut: "Ctrl Alt C",
+          action: insertCode,
+          disabled: !activeDoc,
+        },
+        {
+          label: "Copy Code Block",
+          action: copyCode,
+          disabled: !activeDoc,
+        },
+        {
+          label: "Find in Document",
+          shortcut: "Ctrl F",
+          action: findInDoc,
+          disabled: !activeDoc,
+          separatorBefore: true,
+        },
         {
           label: "Copy Document",
           action: () => {

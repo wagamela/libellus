@@ -22,6 +22,12 @@ shell and the editor. See `project_spec.md` for the full product scope and
   bodies (`Ctrl P`). Each quick-open row carries a delete control (`Ctrl D` on
   the highlighted row): it arms on the first press and deletes on the second,
   and the palette stays open so several documents can be cleared in one pass
+- Code snippet areas inside any document (`Ctrl Alt C`): opens a fenced block
+  with the caret inside it, or wraps the selected lines in one. The block is
+  drawn as its own surface, the code in it is highlighted in its own language
+  (independently of the document's), and a `copy` control on its first line
+  copies the code alone. The language is set from the command palette or by
+  typing it on the fence; the document itself stays plain markdown text
 - Paste (or drop) images into a document: each is stored as a file beside the
   workspace and drawn in place of its reference, wherever the caret is — one
   to a line, or several side by side
@@ -71,6 +77,7 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 | Save             | `Ctrl S`       |
 | Save as          | `Ctrl Shift S` |
 | Find in document | `Ctrl F`       |
+| Insert code block| `Ctrl Alt C`   |
 | Paste image      | `Ctrl V`       |
 | Rename tab       | `F2`           |
 | Close tab        | `Ctrl W`       |
@@ -85,8 +92,8 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 ```text
 src/
   components/   MenuBar, TabBar, Editor, CommandPalette, StatusBar
-  lib/          types, storage, images, files, search, editor theme and lazy
-                language loading
+  lib/          types, storage, images, code blocks, files, search, editor
+                theme and lazy language loading
   store/        zustand workspace store (documents, tabs, autosave)
 src-tauri/      Rust shell; load_store / save_store, the image commands and
                 save_document_as

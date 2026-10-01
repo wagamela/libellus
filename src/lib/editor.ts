@@ -1,4 +1,9 @@
-import { HighlightStyle, syntaxHighlighting, indentUnit } from "@codemirror/language";
+import {
+  HighlightStyle,
+  LanguageDescription,
+  syntaxHighlighting,
+  indentUnit,
+} from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
 import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
@@ -50,13 +55,53 @@ export const libellusTheme: Extension = [
 ];
 
 /**
+ * The grammars a fenced code block inside a note can ask for. They are
+ * descriptions rather than extensions, so a block only pulls its grammar in
+ * when the document actually contains one — the same laziness as `loadLanguage`,
+ * one level down.
+ */
+const CODE_LANGUAGES: LanguageDescription[] = [
+  LanguageDescription.of({
+    name: "typescript",
+    alias: ["ts", "tsx"],
+    load: async () => (await import("@codemirror/lang-javascript")).javascript({ typescript: true }),
+  }),
+  LanguageDescription.of({
+    name: "javascript",
+    alias: ["js", "jsx"],
+    load: async () => (await import("@codemirror/lang-javascript")).javascript(),
+  }),
+  LanguageDescription.of({
+    name: "json",
+    alias: ["jsonc"],
+    load: async () => (await import("@codemirror/lang-json")).json(),
+  }),
+  LanguageDescription.of({
+    name: "python",
+    alias: ["py"],
+    load: async () => (await import("@codemirror/lang-python")).python(),
+  }),
+  LanguageDescription.of({
+    name: "rust",
+    alias: ["rs"],
+    load: async () => (await import("@codemirror/lang-rust")).rust(),
+  }),
+  LanguageDescription.of({
+    name: "sql",
+    load: async () => (await import("@codemirror/lang-sql")).sql(),
+  }),
+];
+
+/**
  * Language support is loaded on demand: the startup bundle carries the editor
  * and nothing else, and a grammar only arrives when a document asks for it.
  */
 export async function loadLanguage(language: Language): Promise<Extension> {
   switch (language) {
     case "markdown":
-      return (await import("@codemirror/lang-markdown")).markdown({ codeLanguages: [] });
+      return (await import("@codemirror/lang-markdown")).markdown({
+        codeLanguages: CODE_LANGUAGES,
+      });
     case "typescript":
       return (await import("@codemirror/lang-javascript")).javascript({ typescript: true });
     case "javascript":
@@ -73,4 +118,14 @@ export async function loadLanguage(language: Language): Promise<Extension> {
     default:
       return [];
   }
+}
+
+/**
+ * The mounted editor. The chrome around it reaches the view this way rather
+ * than threading a ref through App, which is the same route the find command
+ * already takes to the editor's own search panel.
+ */
+export function activeEditor(): EditorView | null {
+  const dom = document.querySelector<HTMLElement>(".cm-editor");
+  return dom ? EditorView.findFromDOM(dom) : null;
 }

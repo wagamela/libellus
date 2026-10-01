@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { loadStore, saveStore } from "../lib/storage";
 import { saveDocumentAs } from "../lib/files";
 import { IMAGE_REF, deleteImage, imageRefs } from "../lib/images";
+import { isFenceLine } from "../lib/codeBlocks";
 import { newId, type Doc, type DocKind, type Language } from "../lib/types";
 
 export type SaveStatus = "idle" | "modified" | "saving" | "saved" | "error";
@@ -52,6 +53,8 @@ const CLOSED_LIMIT = 20;
 function deriveTitle(body: string, kind: DocKind): string {
   const line = body
     .split("\n")
+    // A fence opens a code area; the tab is named after something readable.
+    .filter((l) => !isFenceLine(l))
     // An image reference is a picture, not a sentence: it never names the tab.
     .map((l) => l.replace(IMAGE_REF, "").replace(/^[\s#/*<!;-]+/, "").trim())
     .find((l) => l.length > 0);
