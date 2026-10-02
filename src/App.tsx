@@ -392,6 +392,7 @@ export default function App() {
           renamingId={renaming}
           onSelect={store.activate}
           onClose={store.closeTab}
+          onDelete={store.deleteDoc}
           onNew={newNote}
           onRenameStart={setRenaming}
           onRenameEnd={endRename}

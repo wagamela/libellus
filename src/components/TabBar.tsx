@@ -11,6 +11,8 @@ interface TabBarProps {
   renamingId: string | null;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
+  /** Discards the document for good, not just its tab. */
+  onDelete: (id: string) => void;
   onNew: () => void;
   onRenameStart: (id: string) => void;
   onRenameEnd: (id: string, title: string | null) => void;
@@ -84,12 +86,15 @@ export function TabBar({
   renamingId,
   onSelect,
   onClose,
+  onDelete,
   onNew,
   onRenameStart,
   onRenameEnd,
   onMove,
 }: TabBarProps) {
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  /** Label of the menu item waiting for its second click, if any. */
+  const [armed, setArmed] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const strip = useRef<HTMLDivElement>(null);
@@ -197,7 +202,10 @@ export function TabBar({
   }, [endDrag]);
 
   useEffect(() => {
-    if (!menu) return;
+    if (!menu) {
+      setArmed(null);
+      return;
+    }
     const dismiss = () => setMenu(null);
     const escape = (event: KeyboardEvent) => event.key === "Escape" && setMenu(null);
     window.addEventListener("mousedown", dismiss);
@@ -214,6 +222,9 @@ export function TabBar({
     ? [
         { label: "rename", run: () => onRenameStart(menu.id) },
         { label: "close tab", run: () => onClose(menu.id) },
+        // Deleting is irreversible, so it takes two deliberate clicks — the
+        // same arming the palette's delete button uses.
+        { label: "delete", confirm: true, run: () => onDelete(menu.id) },
       ]
     : [];
 
@@ -336,13 +347,19 @@ export function TabBar({
           {items.map((item) => (
             <button
               key={item.label}
-              className="block w-full px-3 py-[5px] text-left text-[12px] text-text hover:bg-raised active:bg-pressed"
+              className={`block w-full px-3 py-[5px] text-left text-[12px] text-text hover:bg-raised active:bg-pressed ${
+                armed === item.label ? "bg-raised" : ""
+              }`}
               onClick={() => {
+                if (item.confirm && armed !== item.label) {
+                  setArmed(item.label);
+                  return;
+                }
                 setMenu(null);
                 item.run();
               }}
             >
-              {item.label}
+              {armed === item.label ? `${item.label}?` : item.label}
             </button>
           ))}
         </div>
