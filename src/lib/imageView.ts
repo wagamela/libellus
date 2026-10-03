@@ -2,6 +2,7 @@ import { StateField, type EditorState, type Extension } from "@codemirror/state"
 import { RangeSetBuilder } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
 import { IMAGE_REF, getImage, imagesFrom, peekImage, putImage } from "./images";
+import { blockAt } from "./codeBlocks";
 
 /**
  * Images in the editor. A pasted image is written to the image store and the
@@ -92,8 +93,12 @@ const imageField = StateField.define<DecorationSet>({
 });
 
 /** Stores the files and writes a reference per image at the cursor. */
-function insertImages(view: EditorView, files: File[]): boolean {
+function insertImages(view: EditorView, files: File[], pos: number): boolean {
   if (files.length === 0) return false;
+  // A snippet area holds code, and an image reference there would be code the
+  // block claims to contain. The event is still consumed so neither the
+  // browser nor the editor falls back to its own handling of the file.
+  if (blockAt(view.state, pos)) return true;
   void (async () => {
     for (const file of files) {
       const name = await putImage(new Uint8Array(await file.arrayBuffer()), file.type);
@@ -124,16 +129,23 @@ export const libellusImages: Extension = [
   EditorView.atomicRanges.of((view) => view.state.field(imageField, false) ?? Decoration.none),
   EditorView.domEventHandlers({
     paste(event, view) {
-      return insertImages(view, imagesFrom(event.clipboardData));
+      return insertImages(
+        view,
+        imagesFrom(event.clipboardData),
+        view.state.selection.main.from,
+      );
     },
     drop(event, view) {
       const files = imagesFrom(event.dataTransfer);
       if (files.length === 0) return false;
       // Dropping moves the cursor to the drop point first, so the reference
-      // lands where the pointer is rather than where the caret was.
+      // lands where the pointer is rather than where the caret was — but not
+      // into a block, which takes no images at all.
       const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+      const at = pos ?? view.state.selection.main.from;
+      if (blockAt(view.state, at)) return true;
       if (pos !== null) view.dispatch({ selection: { anchor: pos } });
-      return insertImages(view, files);
+      return insertImages(view, files, pos ?? view.state.selection.main.from);
     },
   }),
 ];

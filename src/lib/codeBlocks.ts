@@ -6,13 +6,14 @@ import {
   type DecorationSet,
 } from "@codemirror/view";
 import {
+  Annotation,
+  EditorSelection,
+  EditorState,
   StateField,
-  type EditorState,
   type Extension,
   type Range,
   type Text,
 } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
 import { LANGUAGES, type Language } from "./types";
 
 /**
@@ -137,6 +138,15 @@ export function blockAt(state: EditorState, pos: number): CodeBlock | null {
   return null;
 }
 
+/** True when a block lies anywhere in `[from, to]`, fences included. */
+export function blockTouches(state: EditorState, from: number, to: number): boolean {
+  for (const block of blocksIn(state.doc)) {
+    const end = block.closed ? state.doc.line(block.endLine).to : block.bodyTo;
+    if (from <= end && to >= block.openFrom) return true;
+  }
+  return false;
+}
+
 /** The block the caret currently sits in. */
 export function blockAtCursor(view: EditorView): CodeBlock | null {
   return blockAt(view.state, view.state.selection.main.head);
@@ -148,11 +158,16 @@ export function blockAtCursor(view: EditorView): CodeBlock | null {
  * Opens a snippet area at the caret. A selection is wrapped — whole lines, so
  * the fences never cut a line in half — and an empty selection opens an empty
  * block with the caret already inside it.
+ *
+ * A block never nests: inside one, or across one, the command does nothing.
+ * Fences inside fences are not markdown the document could round-trip, and a
+ * snippet area is already the place code goes.
  */
 export function insertCodeBlock(language: () => Language): Command {
   return (view) => {
     const { state } = view;
     const { from, to } = state.selection.main;
+    if (blockTouches(state, from, to)) return false;
     const startLine = state.doc.lineAt(from);
     const endLine = state.doc.lineAt(to);
     const empty = from === to;
@@ -184,6 +199,9 @@ export function setCodeBlockLanguage(view: EditorView, language: Language): bool
   if (!block) return false;
   view.dispatch({
     changes: { from: block.openFrom + 3, to: block.openTo, insert: language },
+    // The fences are read-only to the user; this is the one way the language
+    // on one changes, so the guard below has to let it through.
+    annotations: fenceEdit.of(true),
     userEvent: "input",
   });
   return true;
@@ -280,11 +298,90 @@ export const DEFAULT_BLOCK_LANGUAGE: Language = "typescript";
 /** Languages a block can be set to; markdown would only nest into itself. */
 export const BLOCK_LANGUAGES: Language[] = LANGUAGES.filter((l) => l !== "markdown");
 
-export function libellusCodeBlocks(language: () => Language): Extension {
-  return [
-    codeBlockField,
-    keymap.of([
-      { key: "Mod-Alt-c", preventDefault: true, run: insertCodeBlock(language) },
-    ]),
-  ];
+
+// --- the fences are not text ----------------------------------------------
+
+/**
+ * A block's opening and closing lines are chrome, not content. They are drawn
+ * from text the user could have typed, but they behave like the frame around
+ * the code: typing on them, deleting them, joining a body line into them or
+ * dropping text onto them all do nothing. Only the body between them is
+ * editable, and only `setCodeBlockLanguage` rewrites a fence — it says so with
+ * an annotation.
+ *
+ * Replacing a block whole is still allowed: a change that covers all of it,
+ * such as select-all-and-delete, removes the block rather than editing a
+ * fence, which is what the user means in that case.
+ */
+const fenceEdit = Annotation.define<boolean>();
+
+/** `[from, to)` of each block, and of the fence lines that cannot be touched.
+ *  A fence range takes in the newline that joins it to the body, so the
+ *  backspace that would pull the first body line up into the opening fence is
+ *  a change inside the range rather than one that merely abuts it. */
+function fenceGuards(doc: Text): { outer: [number, number]; fences: [number, number][] }[] {
+  return blocksIn(doc).map((block) => {
+    const open = doc.line(block.startLine);
+    const fences: [number, number][] = [[open.from, Math.min(open.to + 1, doc.length)]];
+    let end = block.bodyTo;
+    if (block.closed) {
+      const close = doc.line(block.endLine);
+      fences.push([Math.max(close.from - 1, 0), close.to]);
+      end = close.to;
+    }
+    return { outer: [block.openFrom, end], fences };
+  });
 }
+
+/** The nearest position outside `line` in the direction the caret is going. */
+function pastLine(doc: Text, lineNumber: number, forward: boolean): number {
+  const line = doc.line(lineNumber);
+  return forward ? Math.min(line.to + 1, doc.length) : Math.max(line.from - 1, 0);
+}
+
+const fenceGuard = EditorState.transactionFilter.of((tr) => {
+  if (tr.annotation(fenceEdit)) return tr;
+
+  if (tr.docChanged) {
+    const guards = fenceGuards(tr.startState.doc);
+    let blocked = false;
+    tr.changes.iterChangedRanges((fromA, toA) => {
+      if (blocked) return;
+      for (const { outer, fences } of guards) {
+        // A change that swallows the whole block is removing it, not editing
+        // its frame.
+        if (fromA <= outer[0] && toA >= outer[1]) continue;
+        for (const [from, to] of fences) {
+          if (fromA < to && toA > from) blocked = true;
+        }
+      }
+    });
+    if (blocked) return [];
+  }
+
+  // The caret may cross a fence line but never rest on one: it is pushed out
+  // the side it arrived from, so walking down out of a block lands below it
+  // and walking up into one lands at the end of the code.
+  const head = tr.newSelection.main.head;
+  if (!tr.newSelection.main.empty) return tr;
+  const doc = tr.newDoc;
+  for (const block of blocksIn(doc)) {
+    const open = doc.line(block.startLine);
+    const close = block.closed ? doc.line(block.endLine) : null;
+    const on =
+      head >= open.from && head <= open.to
+        ? block.startLine
+        : close && head >= close.from && head <= close.to
+          ? block.endLine
+          : null;
+    if (on === null) continue;
+    const forward = head >= tr.changes.mapPos(tr.startState.selection.main.head);
+    return [tr, { selection: EditorSelection.cursor(pastLine(doc, on, forward)) }];
+  }
+  return tr;
+});
+
+/** Decorations and the read-only fences; the Ctrl Alt C binding lives in
+ *  App.tsx with every other shortcut, so a second keymap here would insert the
+ *  block twice. */
+export const libellusCodeBlocks: Extension = [codeBlockField, fenceGuard];
