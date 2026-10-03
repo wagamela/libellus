@@ -46,6 +46,10 @@
      header on a snippet, for one — sizes itself from this rather than
      measuring the line it sits on. */
   --leading-editor: 1.65;
+  /* A snippet's inset from its own surface. The same value top and bottom, on
+     the header line as well as the last: an inset that is only on one side of
+     a line puts whatever sits in that line off centre. */
+  --inset-code: 5px;
 
   /* Interaction feel. Feedback is near-instant — long enough to read as a
      fade rather than a jump, short enough that the UI never feels like it is
@@ -270,11 +274,13 @@
 .cm-editor .cm-code-open {
   /* The copy control is positioned against this line. */
   position: relative;
-  padding-top: 5px;
+  /* Both sides, so the header's field sits in the middle of the header. */
+  padding-top: var(--inset-code);
+  padding-bottom: var(--inset-code);
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 .cm-editor .cm-code-close {
-  padding-bottom: 5px;
+  padding-bottom: var(--inset-code);
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 /* The caret's line still reads inside a block: the active line is one step
@@ -336,7 +342,11 @@
 .cm-editor .cm-code-copy {
   position: absolute;
   right: 8px;
-  top: 4px;
+  /* Centred against the header line itself, so it keeps agreeing with the
+     field whatever the inset above is. A static transform: this is paint, not
+     layout, and nothing here animates. */
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 1;
   font-size: 10px;
   line-height: 1.4;

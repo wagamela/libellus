@@ -267,7 +267,7 @@ class HeaderWidget extends WidgetType {
     field.setAttribute("data-interactive", "");
     field.spellcheck = false;
     field.autocomplete = "off";
-    field.placeholder = "language";
+    field.placeholder = "type something";
     field.setAttribute("aria-label", "code block language or title");
     field.value = this.info(view, wrap);
     const block = () => blockAt(view.state, view.posAtDOM(wrap));
