@@ -283,6 +283,38 @@
 .cm-editor .cm-code-fence {
   color: var(--color-muted);
 }
+/* The opening fence reads as a header: the backticks give way to one small
+   field for the language or title, and nothing else on the line responds to
+   the pointer at all. */
+.cm-editor .cm-code-head {
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+}
+.cm-editor .cm-code-lang {
+  width: 18ch;
+  padding: 0 4px;
+  margin: 0;
+  background: var(--color-tab);
+  color: var(--color-dim);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  border: 0;
+  border-radius: var(--radius-xs);
+  outline: 0;
+}
+.cm-editor .cm-code-lang::placeholder {
+  color: var(--color-muted);
+}
+.cm-editor .cm-code-lang:hover {
+  background: var(--color-tab-hover);
+  color: var(--color-text);
+}
+.cm-editor .cm-code-lang:focus {
+  background: var(--color-chrome);
+  color: var(--color-text);
+}
 .cm-editor .cm-code-copy {
   position: absolute;
   right: 8px;

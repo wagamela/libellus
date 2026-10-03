@@ -30,8 +30,10 @@ import { LANGUAGES, type Language } from "./types";
  * language without the document changing its own.
  */
 
-/** An opening fence: three backticks and an optional language. */
-const OPEN = /^```([A-Za-z0-9+#._-]*)[ \t]*$/;
+/** An opening fence: three backticks and an optional info string. The info
+ *  string is free text — a language, or a title for the snippet — so the only
+ *  character it may not contain is another backtick. */
+const OPEN = /^```([^`]*)$/;
 /** A closing fence carries nothing but the backticks. */
 const CLOSE = /^```[ \t]*$/;
 
@@ -79,8 +81,19 @@ export function isFenceLine(line: string): boolean {
   return OPEN.test(line.trim());
 }
 
+/** The language a fence's info string asks for: the whole string when it names
+ *  one, otherwise its first word — so "rust hashing helpers" is a titled rust
+ *  block rather than an unhighlighted one. */
 export function fenceLanguage(info: string): Language | null {
-  return ALIASES[info.toLowerCase()] ?? null;
+  const text = info.trim().toLowerCase();
+  if (!text) return null;
+  return ALIASES[text] ?? ALIASES[text.split(/\s+/)[0]] ?? null;
+}
+
+/** An info string is written into a fence line, so it carries no backticks and
+ *  no line breaks. */
+export function cleanFenceInfo(info: string): string {
+  return info.replace(/[`\r\n]/g, "").replace(/^\s+/, "");
 }
 
 /** Every fenced region in the document, in document order. */
@@ -197,14 +210,19 @@ export function insertCodeBlock(language: () => Language): Command {
 export function setCodeBlockLanguage(view: EditorView, language: Language): boolean {
   const block = blockAtCursor(view);
   if (!block) return false;
+  writeFenceInfo(view, block, language);
+  return true;
+}
+
+/** The one write that touches a fence: the info string on its opening line.
+ *  Everything else about a fence is read-only, so this transaction says who it
+ *  is and the guard below lets it through. */
+function writeFenceInfo(view: EditorView, block: CodeBlock, info: string): void {
   view.dispatch({
-    changes: { from: block.openFrom + 3, to: block.openTo, insert: language },
-    // The fences are read-only to the user; this is the one way the language
-    // on one changes, so the guard below has to let it through.
+    changes: { from: block.openFrom + 3, to: block.openTo, insert: cleanFenceInfo(info) },
     annotations: fenceEdit.of(true),
     userEvent: "input",
   });
-  return true;
 }
 
 /** The code inside the block the caret is in. */
@@ -215,6 +233,105 @@ export function codeBlockBody(view: EditorView): string | null {
 }
 
 // --- decorations -----------------------------------------------------------
+
+/**
+ * The opening fence, drawn as a header. The backticks and the info string are
+ * replaced by one small field: the only writable part of a block outside its
+ * code, and the only way the info string changes by hand. What goes in it is a
+ * language name, which also sets the highlighting, or a title — and a title
+ * whose first word is a language gets both.
+ *
+ * The field is one DOM element for the life of the block: `eq` is always true
+ * so a keystroke never rebuilds it (which would take the focus with it), and
+ * `updateDOM` syncs the value back from the document only while the field is
+ * not the thing being typed into.
+ */
+class HeaderWidget extends WidgetType {
+  eq(): boolean {
+    return true;
+  }
+
+  private info(view: EditorView, dom: HTMLElement): string {
+    const block = blockAt(view.state, view.posAtDOM(dom));
+    return block ? block.info : "";
+  }
+
+  toDOM(view: EditorView): HTMLElement {
+    const wrap = document.createElement("span");
+    wrap.className = "cm-code-head";
+    // The header is chrome: the editor must not treat it as part of the text.
+    wrap.contentEditable = "false";
+    const field = document.createElement("input");
+    field.className = "cm-code-lang";
+    // Picks up the shared hover/press fade; only colours ever transition.
+    field.setAttribute("data-interactive", "");
+    field.spellcheck = false;
+    field.autocomplete = "off";
+    field.placeholder = "language";
+    field.setAttribute("aria-label", "code block language or title");
+    field.value = this.info(view, wrap);
+    const block = () => blockAt(view.state, view.posAtDOM(wrap));
+    // The fence is written when the field is done, not per keystroke: the
+    // replaced range is the fence text itself, so changing it while typing
+    // would let the editor rebuild this element and take the focus with it.
+    // One commit is also one undo step rather than one per letter.
+    const commit = () => {
+      const current = block();
+      if (!current) return;
+      const clean = cleanFenceInfo(field.value);
+      if (clean !== field.value) field.value = clean;
+      if (clean !== current.info) writeFenceInfo(view, current, clean);
+    };
+    // Backticks and line breaks would end the fence; they never get as far as
+    // the document, so the field refuses them as they are typed.
+    field.addEventListener("input", () => {
+      const clean = cleanFenceInfo(field.value);
+      if (clean === field.value) return;
+      const caret = Math.max((field.selectionStart ?? clean.length) - 1, 0);
+      field.value = clean;
+      field.setSelectionRange(caret, caret);
+    });
+    field.addEventListener("blur", commit);
+    field.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        // Done naming the block: the caret belongs in the code.
+        event.preventDefault();
+        commit();
+        const current = block();
+        if (current) view.dispatch({ selection: { anchor: current.bodyFrom } });
+        view.focus();
+        return;
+      }
+      if (event.key === "Escape") {
+        // Back to what the document holds, and out of the field.
+        event.preventDefault();
+        field.value = block()?.info ?? "";
+        view.focus();
+        return;
+      }
+      // Plain typing is the field's own; shortcuts still belong to the app, so
+      // they are left to carry on up to the window.
+      if (!event.ctrlKey && !event.metaKey && !event.altKey) event.stopPropagation();
+    });
+    // A click in the field is not a click in the document.
+    field.addEventListener("mousedown", (event) => event.stopPropagation());
+    wrap.appendChild(field);
+    return wrap;
+  }
+
+  updateDOM(dom: HTMLElement, view: EditorView): boolean {
+    const field = dom.firstElementChild as HTMLInputElement | null;
+    if (!field) return false;
+    if (document.activeElement !== field) field.value = this.info(view, dom);
+    return true;
+  }
+
+  ignoreEvent(): boolean {
+    return true;
+  }
+}
+
+const headerWidget = new HeaderWidget();
 
 /** The copy control that hangs off the right of an opening fence. */
 class CopyWidget extends WidgetType {
@@ -272,7 +389,11 @@ function build(state: EditorState): DecorationSet {
       ranges.push(Decoration.line({ class: className }).range(line.from));
     }
     const openLine = state.doc.line(block.startLine);
-    ranges.push(Decoration.mark({ class: "cm-code-fence" }).range(openLine.from, openLine.to));
+    // The fence text is still what the document holds; the header is what the
+    // document looks like.
+    ranges.push(
+      Decoration.replace({ widget: headerWidget }).range(openLine.from, openLine.to),
+    );
     ranges.push(Decoration.widget({ widget: copyWidget, side: 1 }).range(openLine.to));
     if (block.closed) {
       const closeLine = state.doc.line(block.endLine);
