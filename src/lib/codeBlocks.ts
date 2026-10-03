@@ -313,8 +313,13 @@ class HeaderWidget extends WidgetType {
       // they are left to carry on up to the window.
       if (!event.ctrlKey && !event.metaKey && !event.altKey) event.stopPropagation();
     });
-    // A click in the field is not a click in the document.
+    // A click in the field is not a click in the document, and a click on the
+    // header beside the field is not a click at all: the caret must not end up
+    // next to a widget the editor never heard being clicked.
     field.addEventListener("mousedown", (event) => event.stopPropagation());
+    wrap.addEventListener("mousedown", (event) => {
+      if (event.target !== field) event.preventDefault();
+    });
     wrap.appendChild(field);
     return wrap;
   }
@@ -460,6 +465,71 @@ function pastLine(doc: Text, lineNumber: number, forward: boolean): number {
   return forward ? Math.min(line.to + 1, doc.length) : Math.max(line.from - 1, 0);
 }
 
+/** True when `pos` sits on either fence line of a block. */
+function onFenceLine(state: EditorState, pos: number): boolean {
+  for (const block of blocksIn(state.doc)) {
+    const open = state.doc.line(block.startLine);
+    if (pos >= open.from && pos <= open.to) return true;
+    if (block.closed) {
+      const close = state.doc.line(block.endLine);
+      if (pos >= close.from && pos <= close.to) return true;
+    }
+  }
+  return false;
+}
+
+/** True when the browser has put the caret on a fence line on its own. It can:
+ *  a click on a widget that is not editable leaves the selection beside it,
+ *  and no transaction is dispatched for the editor to filter. */
+function domCaretOnFence(view: EditorView): boolean {
+  const selection = view.dom.ownerDocument.getSelection();
+  const node = selection?.focusNode ?? null;
+  if (!node) return false;
+  const element = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+  return !!element?.closest(".cm-code-open, .cm-code-close");
+}
+
+/** The header's own field and copy control; events there are theirs. */
+function inFenceChrome(event: Event): boolean {
+  const target = event.target;
+  if (!(target instanceof Element)) return false;
+  return !!target.closest(".cm-code-head, .cm-code-copy");
+}
+
+/**
+ * The fences are not text, so the pointer and the keyboard never reach them.
+ * Cancelling the transaction is not enough on its own: text typed into a
+ * contenteditable is in the DOM before the editor hears about it, so a change
+ * the guard below rejects would stay on screen with the document disagreeing —
+ * which is what takes a block apart. Nothing is allowed that far.
+ */
+const fenceEvents = EditorView.domEventHandlers({
+  mousedown(event, view) {
+    if (inFenceChrome(event)) return false;
+    const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+    if (pos === null || !onFenceLine(view.state, pos)) return false;
+    // No caret, no selection, no focus: the line does not answer the pointer
+    // anywhere but on its field and its copy control.
+    event.preventDefault();
+    return true;
+  },
+  beforeinput(event, view) {
+    if (inFenceChrome(event)) return false;
+    const { from, to } = view.state.selection.main;
+    if (!onFenceLine(view.state, from) && !onFenceLine(view.state, to) && !domCaretOnFence(view)) {
+      return false;
+    }
+    event.preventDefault();
+    return true;
+  },
+  drop(event, view) {
+    const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+    if (pos === null || !onFenceLine(view.state, pos)) return false;
+    event.preventDefault();
+    return true;
+  },
+});
+
 const fenceGuard = EditorState.transactionFilter.of((tr) => {
   if (tr.annotation(fenceEdit)) return tr;
 
@@ -505,4 +575,4 @@ const fenceGuard = EditorState.transactionFilter.of((tr) => {
 /** Decorations and the read-only fences; the Ctrl Alt C binding lives in
  *  App.tsx with every other shortcut, so a second keymap here would insert the
  *  block twice. */
-export const libellusCodeBlocks: Extension = [codeBlockField, fenceGuard];
+export const libellusCodeBlocks: Extension = [codeBlockField, fenceEvents, fenceGuard];

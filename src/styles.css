@@ -42,6 +42,11 @@
   --radius-xs: 2px;
   --radius-sm: 3px;
 
+  /* The editor's leading. Chrome drawn into a line of the document — the
+     header on a snippet, for one — sizes itself from this rather than
+     measuring the line it sits on. */
+  --leading-editor: 1.65;
+
   /* Interaction feel. Feedback is near-instant — long enough to read as a
      fade rather than a jump, short enough that the UI never feels like it is
      catching up. Only colour and opacity are ever transitioned; animating
@@ -160,7 +165,7 @@
 .cm-editor .cm-scroller {
   font-family: var(--font-sans);
   font-size: 13px;
-  line-height: 1.65;
+  line-height: var(--leading-editor);
 }
 .cm-editor.cm-focused {
   outline: none;
@@ -286,12 +291,25 @@
 /* The opening fence reads as a header: the backticks give way to one small
    field for the language or title, and nothing else on the line responds to
    the pointer at all. */
+/* The fence lines answer the pointer nowhere but on their own controls, so
+   they do not pretend to be text under the cursor either. */
+.cm-editor .cm-code-open,
+.cm-editor .cm-code-close {
+  cursor: default;
+}
 .cm-editor .cm-code-head {
   display: inline-flex;
   align-items: center;
+  /* As tall as the line it replaces, and aligned to the top of it rather than
+     to the text baseline — so the field is centred in the header instead of
+     hanging off the baseline of text that is no longer drawn. The height is
+     the editor's own leading, never a measurement taken at runtime. */
+  height: calc(1em * var(--leading-editor));
+  vertical-align: top;
   user-select: none;
 }
 .cm-editor .cm-code-lang {
+  cursor: text;
   width: 18ch;
   padding: 0 4px;
   margin: 0;
