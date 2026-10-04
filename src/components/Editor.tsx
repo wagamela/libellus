@@ -22,6 +22,7 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { loadLanguage, libellusTheme } from "../lib/editor";
 import { libellusImages } from "../lib/imageView";
 import { libellusCodeBlocks } from "../lib/codeBlocks";
+import { libellusCodeHighlight } from "../lib/codeHighlight";
 import type { Doc } from "../lib/types";
 
 interface EditorProps {
@@ -92,6 +93,7 @@ export function Editor({ doc, onChange, onSave, autoFocus = true }: EditorProps)
           EditorView.lineWrapping,
           libellusImages,
           libellusCodeBlocks,
+          libellusCodeHighlight,
           keymap.of([
             {
               key: "Mod-s",

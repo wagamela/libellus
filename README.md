@@ -24,10 +24,20 @@ shell and the editor. See `project_spec.md` for the full product scope and
   and the palette stays open so several documents can be cleared in one pass
 - Code snippet areas inside any document (`Ctrl Alt C`): opens a fenced block
   with the caret inside it, or wraps the selected lines in one. The block is
-  drawn as its own surface, the code in it is highlighted in its own language
-  (independently of the document's), and a `copy` control on its first line
-  copies the code alone. The language is set from the command palette or by
-  typing it on the fence; the document itself stays plain markdown text
+  drawn as its own surface and the document itself stays plain markdown text
+- A block works out its own language. Nothing is declared and nothing is set
+  by hand: the code is read, recognised, and coloured in whatever it turned out
+  to be — TypeScript, JavaScript, Python, Rust, SQL or JSON. Code that is not
+  recognised confidently stays plain rather than being coloured as a guess
+- The block's header says what it found on the right, beside the `copy` control
+  that copies the code alone. The field on the left is the snippet's own title
+  or a note on what it is for — it is yours to write and has no effect on the
+  highlighting
+- Code is the one place in libellus that carries colour. Keywords, strings,
+  numbers, types, the things that are called and the names being defined each
+  take a hue of their own — few and desaturated, with names and punctuation left
+  grey — so the shape of a snippet reads at a glance. It stops at the edge of the
+  code: prose, chrome, tabs and menus stay achromatic
 - Paste (or drop) images into a document: each is stored as a file beside the
   workspace and drawn in place of its reference, wherever the caret is — one
   to a line, or several side by side
@@ -92,8 +102,9 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 ```text
 src/
   components/   MenuBar, TabBar, Editor, CommandPalette, StatusBar
-  lib/          types, storage, images, code blocks, files, search, editor
-                theme and lazy language loading
+  lib/          types, storage, images, code blocks, snippet language
+                detection and highlighting, files, search, editor theme and
+                lazy language loading
   store/        zustand workspace store (documents, tabs, autosave)
 src-tauri/      Rust shell; load_store / save_store, the image commands and
                 save_document_as

@@ -53,14 +53,20 @@ command-palette modes (commands via `Ctrl K`, quick open via `Ctrl P`) are all a
 there from the same callbacks, so a new command belongs in all three lists. In-document find
 is delegated to CodeMirror by dispatching a synthetic `Ctrl F` at `.cm-content`.
 
-**Editor.** CodeMirror 6. `src/lib/editor.ts` holds the theme and highlight style and loads
-language grammars on demand via dynamic `import()` — keep new languages lazy so they stay out
-of the startup bundle. Add the language to `Language`/`LANGUAGES` in `types.ts` as well, and to
-`CODE_LANGUAGES` in `editor.ts` if a fenced code block should be able to use it.
+**Editor.** CodeMirror 6. `src/lib/editor.ts` holds the theme, the `TOKEN_STYLES` palette and
+the lazy grammar loaders — `loadLanguage` for the document the user is typing in, `loadParser`
+for the bare grammar a recognised snippet is parsed with. Keep new languages lazy so they stay
+out of the startup bundle. Adding one means `Language`/`LANGUAGES` in `types.ts`, a `loadLanguage`
+case, a `loadParser` case, and a set of signals in `detect.ts` so a snippet can be recognised as
+it.
 
 **Rich content is plain text.** Images (`src/lib/images.ts`, `src/lib/imageView.ts`) and code
 snippet areas (`src/lib/codeBlocks.ts`) add no fields to `Doc`: an image is a
-`![](libellus:name)` reference and a code block is an ordinary ``` fence. The editor decorates
+`![](libellus:name)` reference and a code block is an ordinary ``` fence. A fence's info
+string is the snippet's title and nothing else — it never names a language, which is why
+markdown is loaded without `codeLanguages`. A block's language is recognised from the code
+by `src/lib/detect.ts`, coloured by `src/lib/codeHighlight.ts` and reported in the block's
+header; there is no way to declare or override it, by design. The editor decorates
 those spans, so the body stays markdown that saves out and searches as written, and nothing
 about this needs a store migration. Keep anything in this family the same way — a decoration
 over text the user could have typed, never a new shape in the document model.
@@ -78,7 +84,12 @@ deliberately simple until SQLite FTS replaces it.
   `--color-line` tokens to reach for; do not add borders back.
 - The palette is deliberately achromatic: dark blue-grey surfaces, white content, and a
   near-white `--color-accent`. Emphasis comes from brightness, never hue — that includes
-  syntax highlighting and error states. Do not add a coloured accent or semantic hues.
+  error states. Do not add a coloured accent or semantic hues.
+- Syntax highlighting inside code is the one exception: the tokens in a snippet document or
+  a fenced block carry real hues, because brightness steps alone are not perceptible as
+  different token kinds. The palette is `TOKEN_STYLES` in `src/lib/editor.ts` — few,
+  desaturated, with names and punctuation left grey. It must not leak outside the code:
+  markdown prose tokens and every piece of chrome stay achromatic.
 - The UI is set in Geist (sans) throughout and lowercase in most labels; the only Geist Mono
   in the app is the `libellus` wordmark in the top-right of the menu bar; it should read as a native
   desktop tool, not a web page.

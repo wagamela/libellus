@@ -6,14 +6,7 @@ import { StatusBar } from "./components/StatusBar";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
 import { searchDocs } from "./lib/search";
 import { activeEditor } from "./lib/editor";
-import {
-  BLOCK_LANGUAGES,
-  DEFAULT_BLOCK_LANGUAGE,
-  blockAtCursor,
-  codeBlockBody,
-  insertCodeBlock,
-  setCodeBlockLanguage,
-} from "./lib/codeBlocks";
+import { blockAtCursor, codeBlockBody, insertCodeBlock } from "./lib/codeBlocks";
 import { LANGUAGES } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
 
@@ -87,10 +80,10 @@ export default function App() {
   const insertCode = useCallback(() => {
     const view = activeEditor();
     if (!view) return;
-    const language =
-      activeDoc && activeDoc.language !== "markdown" ? activeDoc.language : DEFAULT_BLOCK_LANGUAGE;
-    insertCodeBlock(() => language)(view);
-  }, [activeDoc]);
+    // A block opens untitled: its fence carries a title if the user writes one,
+    // and the language is recognised from the code rather than declared.
+    insertCodeBlock(() => null)(view);
+  }, []);
   const copyCode = useCallback(() => {
     const view = activeEditor();
     const code = view ? codeBlockBody(view) : null;
@@ -212,14 +205,10 @@ export default function App() {
       const view = activeEditor();
       const block = view ? blockAtCursor(view) : null;
       if (block && view) {
+        // The language is not among these: it is recognised from the code and
+        // reported in the block's own header, never set by hand.
         for (const item of [
-          { id: "copy-code", label: "copy code block", hint: block.info || "no language", run: copyCode },
-          ...BLOCK_LANGUAGES.map((language) => ({
-            id: `block-lang-${language}`,
-            label: `set code block language: ${language}`,
-            hint: block.language === language ? "current" : "",
-            run: () => setCodeBlockLanguage(view, language),
-          })),
+          { id: "copy-code", label: "copy code block", hint: block.info || "untitled", run: copyCode },
         ]) {
           if (item.label.includes(q)) matched.push(item);
         }
