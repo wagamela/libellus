@@ -245,9 +245,18 @@ colors.
 The interface is achromatic by decision: the surfaces are dark blue-greys,
 the content is white, and the accent is a near-white `#DBE4F0` rather than a
 hue. Emphasis — the active tab, the caret, focus rings, the unsaved dot —
-comes from brightness, not colour. This extends to syntax highlighting and to
-states such as errors, which are brighter rather than red. Do not reintroduce
-a coloured accent or semantic hues.
+comes from brightness, not colour, and states such as errors are brighter
+rather than red. Do not reintroduce a coloured accent or semantic hues.
+
+Code is the one exception. Syntax tokens inside code — a snippet document, and
+the inside of a fenced block in a note — carry real hues, because with every
+token in one hue the steps between a keyword, a name, a string and a number are
+not perceptible as different, which is the whole job of highlighting them. The
+palette is few and desaturated (violet keywords, green strings, amber numbers,
+cyan types, blue callables; names and punctuation stay grey) and lives in
+`TOKEN_STYLES` in `src/lib/editor.ts`. It stops at the edge of the code: prose
+tokens, chrome, tabs, menus, the status bar and error affordances stay
+achromatic, and these hues must never become interface accents.
 
 ------------------------------------------------------------------------
 

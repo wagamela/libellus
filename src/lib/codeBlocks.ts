@@ -14,7 +14,8 @@ import {
   type Range,
   type Text,
 } from "@codemirror/state";
-import { LANGUAGES, type Language } from "./types";
+import type { Language } from "./types";
+import { detectCodeLanguage } from "./detect";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -25,9 +26,11 @@ import { LANGUAGES, type Language } from "./types";
  * off the opening line, which is what turns a run of lines into an area you
  * paste code into rather than prose you have to indent by hand.
  *
- * Highlighting inside the fence comes from the markdown grammar's nested
- * languages (see `loadLanguage` in `editor.ts`), so a block carries its own
- * language without the document changing its own.
+ * A fence's info string is a title for the snippet and nothing else. The
+ * language is never written there and never typed: it is recognised from the
+ * code by `codeHighlight.ts`, which also colours the block and says what it
+ * found on the right of the header. So a block names itself, and what the user
+ * writes about it stays what they wrote.
  */
 
 /** An opening fence: three backticks and an optional info string. The info
@@ -36,28 +39,6 @@ import { LANGUAGES, type Language } from "./types";
 const OPEN = /^```([^`]*)$/;
 /** A closing fence carries nothing but the backticks. */
 const CLOSE = /^```[ \t]*$/;
-
-/** The fence languages people actually type, mapped onto ours. */
-const ALIASES: Record<string, Language> = {
-  ts: "typescript",
-  tsx: "typescript",
-  typescript: "typescript",
-  js: "javascript",
-  jsx: "javascript",
-  javascript: "javascript",
-  json: "json",
-  jsonc: "json",
-  py: "python",
-  python: "python",
-  rs: "rust",
-  rust: "rust",
-  sql: "sql",
-  md: "markdown",
-  markdown: "markdown",
-  txt: "text",
-  text: "text",
-  plain: "text",
-};
 
 export interface CodeBlock {
   /** Line numbers of the fences, or of the document end in an unclosed block. */
@@ -69,9 +50,8 @@ export interface CodeBlock {
   /** The code between the fences, which may be empty. */
   bodyFrom: number;
   bodyTo: number;
-  /** The fence's language as written; "" when it carries none. */
+  /** The fence's info string: the snippet's title, or "" when it has none. */
   info: string;
-  language: Language | null;
   /** False while a fence is still being typed and has no partner yet. */
   closed: boolean;
 }
@@ -79,15 +59,6 @@ export interface CodeBlock {
 /** True for a line that is nothing but a fence, so a title never comes from one. */
 export function isFenceLine(line: string): boolean {
   return OPEN.test(line.trim());
-}
-
-/** The language a fence's info string asks for: the whole string when it names
- *  one, otherwise its first word — so "rust hashing helpers" is a titled rust
- *  block rather than an unhighlighted one. */
-export function fenceLanguage(info: string): Language | null {
-  const text = info.trim().toLowerCase();
-  if (!text) return null;
-  return ALIASES[text] ?? ALIASES[text.split(/\s+/)[0]] ?? null;
 }
 
 /** An info string is written into a fence line, so it carries no backticks and
@@ -114,7 +85,6 @@ export function blocksIn(doc: Text): CodeBlock[] {
         bodyFrom: Math.min(open.to + 1, line.from),
         bodyTo: Math.max(line.from - 1, Math.min(open.to + 1, line.from)),
         info: open.info,
-        language: fenceLanguage(open.info),
         closed: true,
       });
       open = null;
@@ -135,7 +105,6 @@ export function blocksIn(doc: Text): CodeBlock[] {
       bodyFrom: Math.min(open.to + 1, last.to),
       bodyTo: last.to,
       info: open.info,
-      language: fenceLanguage(open.info),
       closed: false,
     });
   }
@@ -176,7 +145,7 @@ export function blockAtCursor(view: EditorView): CodeBlock | null {
  * Fences inside fences are not markdown the document could round-trip, and a
  * snippet area is already the place code goes.
  */
-export function insertCodeBlock(language: () => Language): Command {
+export function insertCodeBlock(language: () => Language | null): Command {
   return (view) => {
     const { state } = view;
     const { from, to } = state.selection.main;
@@ -188,7 +157,11 @@ export function insertCodeBlock(language: () => Language): Command {
     // A block always owns its lines, so a line of prose the caret happens to
     // be in is kept above the fence rather than swallowed by it.
     const lead = empty && startLine.text.trim() !== "" ? `${startLine.text}\n` : "";
-    const open = "```" + language();
+    // A block is allowed to open unnamed: in a note it usually should, because
+    // whatever is pasted into it is recognised from the code itself (see
+    // `codeHighlight.ts`), and a language guessed by the editor is better than
+    // one stamped on the fence before there is any code to stamp it for.
+    const open = "```" + (language() ?? "");
     // Without this there is no line below a block at the end of the document,
     // and so no way to type past it.
     const tail = endLine.to >= state.doc.length ? "\n" : "";
@@ -206,17 +179,9 @@ export function insertCodeBlock(language: () => Language): Command {
   };
 }
 
-/** Rewrites the language on the fence of the block the caret is in. */
-export function setCodeBlockLanguage(view: EditorView, language: Language): boolean {
-  const block = blockAtCursor(view);
-  if (!block) return false;
-  writeFenceInfo(view, block, language);
-  return true;
-}
-
-/** The one write that touches a fence: the info string on its opening line.
- *  Everything else about a fence is read-only, so this transaction says who it
- *  is and the guard below lets it through. */
+/** The one write that touches a fence: the title on its opening line, as the
+ *  header's field commits it. Everything else about a fence is read-only, so
+ *  this transaction says who it is and the guard below lets it through. */
 function writeFenceInfo(view: EditorView, block: CodeBlock, info: string): void {
   view.dispatch({
     changes: { from: block.openFrom + 3, to: block.openTo, insert: cleanFenceInfo(info) },
@@ -238,22 +203,30 @@ export function codeBlockBody(view: EditorView): string | null {
  * The opening fence, drawn as a header. The backticks and the info string are
  * replaced by one small field: the only writable part of a block outside its
  * code, and the only way the info string changes by hand. What goes in it is a
- * language name, which also sets the highlighting, or a title — and a title
- * whose first word is a language gets both.
+ * title for the snippet — a name, or a note on what it is for. It does not
+ * decide the language; the language is recognised from the code and reported on
+ * the other side of the header.
  *
- * The field is one DOM element for the life of the block: `eq` is always true
- * so a keystroke never rebuilds it (which would take the focus with it), and
- * `updateDOM` syncs the value back from the document only while the field is
- * not the thing being typed into.
+ * The field is one DOM element for the life of the block. What it should show
+ * is worked out where the decoration is built, because that is the one place
+ * the block is actually known — inside `toDOM` the element is not in the
+ * document yet, so there is no position to look a block up from. Two widgets
+ * showing the same thing are equal, so a keystroke in the code never rebuilds
+ * the field (which would take the focus with it); when they differ, `updateDOM`
+ * syncs the element in place rather than replacing it, and leaves the value
+ * alone while the field is the thing being typed into.
  */
+/** What the title field offers while it is empty. */
+const PLACEHOLDER = "title";
+
 class HeaderWidget extends WidgetType {
-  eq(): boolean {
-    return true;
+  /** @param text  The fence's info string, which is what the field holds. */
+  constructor(readonly text: string) {
+    super();
   }
 
-  private info(view: EditorView, dom: HTMLElement): string {
-    const block = blockAt(view.state, view.posAtDOM(dom));
-    return block ? block.info : "";
+  eq(other: HeaderWidget): boolean {
+    return other.text === this.text;
   }
 
   toDOM(view: EditorView): HTMLElement {
@@ -267,9 +240,9 @@ class HeaderWidget extends WidgetType {
     field.setAttribute("data-interactive", "");
     field.spellcheck = false;
     field.autocomplete = "off";
-    field.placeholder = "type something";
-    field.setAttribute("aria-label", "code block language or title");
-    field.value = this.info(view, wrap);
+    field.placeholder = PLACEHOLDER;
+    field.setAttribute("aria-label", "code block title");
+    field.value = this.text;
     const block = () => blockAt(view.state, view.posAtDOM(wrap));
     // The fence is written when the field is done, not per keystroke: the
     // replaced range is the fence text itself, so changing it while typing
@@ -324,10 +297,10 @@ class HeaderWidget extends WidgetType {
     return wrap;
   }
 
-  updateDOM(dom: HTMLElement, view: EditorView): boolean {
+  updateDOM(dom: HTMLElement): boolean {
     const field = dom.firstElementChild as HTMLInputElement | null;
     if (!field) return false;
-    if (document.activeElement !== field) field.value = this.info(view, dom);
+    if (document.activeElement !== field) field.value = this.text;
     return true;
   }
 
@@ -336,22 +309,44 @@ class HeaderWidget extends WidgetType {
   }
 }
 
-const headerWidget = new HeaderWidget();
+/**
+ * The right end of a block's header: what the code was recognised as, and the
+ * control that copies it.
+ *
+ * The language sits here rather than in the title field because it is not
+ * something the user wrote — it is what the editor made of the code, reported
+ * back. It is chrome, so it stays achromatic even though the code below it is
+ * not, and it says nothing at all when nothing was recognised rather than
+ * guessing out loud.
+ */
+class ToolsWidget extends WidgetType {
+  /** @param language  The language recognised in the block, or "" for none. */
+  constructor(readonly language: string) {
+    super();
+  }
 
-/** The copy control that hangs off the right of an opening fence. */
-class CopyWidget extends WidgetType {
-  /** Every copy control is the same control: the block it belongs to is found
-   *  from the DOM when it is clicked, so typing in a block never rebuilds it. */
-  eq(): boolean {
-    return true;
+  /** Two headers reporting the same language are the same header, so typing in
+   *  the code rebuilds this only when the answer actually changes — which keeps
+   *  the copy control's own "copied" state from being swept away mid-flash. */
+  eq(other: ToolsWidget): boolean {
+    return other.language === this.language;
   }
 
   toDOM(view: EditorView): HTMLElement {
+    const wrap = document.createElement("span");
+    wrap.className = "cm-code-tools";
+    // Chrome must not treat any of this as part of the editable text.
+    wrap.contentEditable = "false";
+
+    const tag = document.createElement("span");
+    tag.className = "cm-code-tag";
+    tag.textContent = this.language;
+    wrap.appendChild(tag);
+
     const button = document.createElement("button");
     button.className = "cm-code-copy";
     button.textContent = "copy";
     button.tabIndex = -1;
-    // Chrome must not treat the control as part of the editable text.
     button.contentEditable = "false";
     button.setAttribute("aria-label", "copy code block");
     let revert: ReturnType<typeof setTimeout> | undefined;
@@ -369,15 +364,21 @@ class CopyWidget extends WidgetType {
         button.textContent = "copy";
       }, 1100);
     });
-    return button;
+    wrap.appendChild(button);
+    return wrap;
+  }
+
+  updateDOM(dom: HTMLElement): boolean {
+    const tag = dom.firstElementChild;
+    if (!tag) return false;
+    tag.textContent = this.language;
+    return true;
   }
 
   ignoreEvent(): boolean {
     return true;
   }
 }
-
-const copyWidget = new CopyWidget();
 
 function build(state: EditorState): DecorationSet {
   // The common document has no fences at all, and this keeps a keystroke there
@@ -397,9 +398,19 @@ function build(state: EditorState): DecorationSet {
     // The fence text is still what the document holds; the header is what the
     // document looks like.
     ranges.push(
-      Decoration.replace({ widget: headerWidget }).range(openLine.from, openLine.to),
+      Decoration.replace({ widget: new HeaderWidget(block.info) }).range(
+        openLine.from,
+        openLine.to,
+      ),
     );
-    ranges.push(Decoration.widget({ widget: copyWidget, side: 1 }).range(openLine.to));
+    // What the code was recognised as — the same answer `codeHighlight.ts`
+    // colours the block with, so the label can never disagree with what is on
+    // screen beneath it.
+    const language =
+      detectCodeLanguage(state.doc.sliceString(block.bodyFrom, block.bodyTo)) ?? "";
+    ranges.push(
+      Decoration.widget({ widget: new ToolsWidget(language), side: 1 }).range(openLine.to),
+    );
     if (block.closed) {
       const closeLine = state.doc.line(block.endLine);
       ranges.push(
@@ -418,11 +429,6 @@ const codeBlockField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
-/** The language a new block opens with when the document has no better one. */
-export const DEFAULT_BLOCK_LANGUAGE: Language = "typescript";
-
-/** Languages a block can be set to; markdown would only nest into itself. */
-export const BLOCK_LANGUAGES: Language[] = LANGUAGES.filter((l) => l !== "markdown");
 
 
 // --- the fences are not text ----------------------------------------------
@@ -432,7 +438,7 @@ export const BLOCK_LANGUAGES: Language[] = LANGUAGES.filter((l) => l !== "markdo
  * from text the user could have typed, but they behave like the frame around
  * the code: typing on them, deleting them, joining a body line into them or
  * dropping text onto them all do nothing. Only the body between them is
- * editable, and only `setCodeBlockLanguage` rewrites a fence — it says so with
+ * editable, and only the header's own field rewrites a fence — it says so with
  * an annotation.
  *
  * Replacing a block whole is still allowed: a change that covers all of it,
@@ -493,7 +499,7 @@ function domCaretOnFence(view: EditorView): boolean {
 function inFenceChrome(event: Event): boolean {
   const target = event.target;
   if (!(target instanceof Element)) return false;
-  return !!target.closest(".cm-code-head, .cm-code-copy");
+  return !!target.closest(".cm-code-head, .cm-code-tools");
 }
 
 /**
@@ -567,7 +573,15 @@ const fenceGuard = EditorState.transactionFilter.of((tr) => {
           : null;
     if (on === null) continue;
     const forward = head >= tr.changes.mapPos(tr.startState.selection.main.head);
-    return [tr, { selection: EditorSelection.cursor(pastLine(doc, on, forward)) }];
+    // `sequential` because this position was worked out in `tr.newDoc`. Without
+    // it the appended spec is read against the document the transaction started
+    // from and mapped forward, so any edit that grows the document past that
+    // length — pasting a block into an empty note, say — asks for a position
+    // the old document never had and the whole edit throws.
+    return [
+      tr,
+      { selection: EditorSelection.cursor(pastLine(doc, on, forward)), sequential: true },
+    ];
   }
   return tr;
 });

@@ -295,8 +295,9 @@
   color: var(--color-muted);
 }
 /* The opening fence reads as a header: the backticks give way to one small
-   field for the language or title, and nothing else on the line responds to
-   the pointer at all. */
+   field for the snippet's title on the left and, on the right, what the code
+   was recognised as beside the copy control. Nothing else on the line responds
+   to the pointer at all. */
 /* The fence lines answer the pointer nowhere but on their own controls, so
    they do not pretend to be text under the cursor either. */
 .cm-editor .cm-code-open,
@@ -339,21 +340,41 @@
   background: var(--color-chrome);
   color: var(--color-text);
 }
-.cm-editor .cm-code-copy {
+/* The right end of the header: the recognised language, then the copy
+   control. One positioned group rather than two, so the two always agree about
+   where the right edge is and the label never has to know how wide `copy` is.
+   Centred against the header line itself, so it keeps agreeing with the title
+   field whatever the inset above is — a static transform: this is paint, not
+   layout, and nothing here animates. */
+.cm-editor .cm-code-tools {
   position: absolute;
   right: 8px;
-  /* Centred against the header line itself, so it keeps agreeing with the
-     field whatever the inset above is. A static transform: this is paint, not
-     layout, and nothing here animates. */
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+/* What the editor made of the code, reported back. It is chrome rather than
+   code, so it stays achromatic while the block below it is not, and it is a
+   label rather than a control: no hover, nothing to press. An empty tag —
+   nothing recognised — collapses and leaves the copy control where it was. */
+.cm-editor .cm-code-tag {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--color-muted);
+}
+.cm-editor .cm-code-tag:empty {
+  display: none;
+}
+.cm-editor .cm-code-copy {
   font-size: 10px;
   line-height: 1.4;
   padding: 1px 5px;
   border-radius: var(--radius-xs);
   color: var(--color-muted);
-  user-select: none;
 }
 .cm-editor .cm-code-copy:hover {
   color: var(--color-text);
