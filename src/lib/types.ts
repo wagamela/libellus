@@ -7,6 +7,8 @@ export type Language =
   | "json"
   | "python"
   | "rust"
+  | "cpp"
+  | "csharp"
   | "sql"
   | "text";
 
@@ -44,6 +46,8 @@ export const LANGUAGES: Language[] = [
   "json",
   "python",
   "rust",
+  "cpp",
+  "csharp",
   "sql",
   "text",
 ];
@@ -60,6 +64,8 @@ export const LANGUAGE_EXTENSION: Record<Language, string> = {
   json: "json",
   python: "py",
   rust: "rs",
+  cpp: "cpp",
+  csharp: "cs",
   sql: "sql",
   text: "txt",
 };

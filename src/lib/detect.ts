@@ -92,6 +92,51 @@ const RUST: Signal[] = [
   { re: /\bmatch\b[^\n]*\{/, weight: 2 },
 ];
 
+/**
+ * C++ announces itself: a preprocessor line or `std::` is something no other
+ * language here can produce. The rest separate it from C# and from Rust, which
+ * share its braces and its `::`.
+ */
+const CPP: Signal[] = [
+  { re: /^[ \t]*#\s*include\s*[<"]/m, weight: 7 },
+  { re: /\bstd::/, weight: 6 },
+  { re: /\busing\s+namespace\s+\w+\s*;/, weight: 6 },
+  { re: /^[ \t]*#\s*(?:define|pragma|ifndef|ifdef|endif|else\b)/m, weight: 5 },
+  { re: /\b(?:cout|cerr|cin)\s*(?:<<|>>)/, weight: 5 },
+  { re: /\btemplate\s*<[^>\n]*>/, weight: 5 },
+  { re: /\b(?:public|private|protected)\s*:/, weight: 5 },
+  { re: /\bnullptr\b|\bNULL\b/, weight: 4 },
+  { re: /\b(?:vector|string|map|set|array|unique_ptr|shared_ptr|pair)\s*</, weight: 4 },
+  { re: /\bdelete\s+(?:\[\]\s*)?[A-Za-z_]|\bnew\s+[A-Za-z_]\w*\s*[[(]/, weight: 3 },
+  { re: /\b(?:int|void|char|bool|float|double|size_t|unsigned|long)\s+[A-Za-z_]\w*\s*\(/, weight: 3 },
+  { re: /\bauto\s+[A-Za-z_&*]\w*\s*=/, weight: 3 },
+  { re: /\bconst\s+[A-Za-z_][\w:]*\s*&/, weight: 3 },
+  { re: /\bprintf\s*\(|\bmalloc\s*\(|\bsizeof\b/, weight: 3 },
+  { re: /[A-Za-z_]\w*::[A-Za-z_~]/, weight: 2 },
+];
+
+/**
+ * C# is the other language in this set built out of braces and `public`, so
+ * what counts here is what only it has: the `System` imports, `Console`, an
+ * auto-property, a capitalised `Main`.
+ */
+const CSHARP: Signal[] = [
+  { re: /^[ \t]*using\s+(?:System|Microsoft)[\w.]*\s*;/m, weight: 7 },
+  { re: /\bConsole\.(?:WriteLine|Write|ReadLine|ReadKey)\s*\(/, weight: 7 },
+  { re: /\{\s*get;\s*(?:(?:private\s+|protected\s+|internal\s+)?set;\s*)?\}/, weight: 7 },
+  { re: /\bnamespace\s+[A-Z][\w.]*\s*[{;]/, weight: 6 },
+  { re: /\b(?:public|private|protected|internal)\s+(?:(?:static|sealed|partial|abstract|virtual|override|async|readonly)\s+)*(?:class|struct|interface|enum|record|void|int|string|bool|double|Task)\b/, weight: 6 },
+  { re: /\bstatic\s+void\s+Main\s*\(/, weight: 6 },
+  { re: /\bforeach\s*\(\s*(?:var|[A-Za-z_][\w<>,.\[\]]*)\s+\w+\s+in\b/, weight: 5 },
+  { re: /\basync\s+Task\b|\bTask<[^>\n]*>/, weight: 5 },
+  { re: /\b(?:List|Dictionary|IEnumerable|HashSet|IList)\s*<[^>\n]*>/, weight: 4 },
+  { re: /\bnameof\s*\(|\bstring\.(?:Format|Join|IsNullOrEmpty|IsNullOrWhiteSpace)\b/, weight: 4 },
+  { re: /^[ \t]*#(?:region|endregion)\b/m, weight: 4 },
+  { re: /\bvar\s+[A-Za-z_]\w*\s*=\s*new\s+[A-Z]/, weight: 4 },
+  { re: /\b(?:override|virtual|sealed|partial|internal)\s+[A-Za-z_]/, weight: 3 },
+  { re: /^[ \t]*\[[A-Z]\w*(?:\([^)\n]*\))?\][ \t]*$/m, weight: 3 },
+];
+
 const SQL: Signal[] = [
   { re: /\bselect\b[\s\S]*\bfrom\b/i, weight: 6 },
   { re: /\binsert\s+into\b/i, weight: 6 },
@@ -113,6 +158,15 @@ const JSON_SIGNALS: Signal[] = [
   { re: /"[^"\n]+"\s*:\s*(?:["{[\d]|true|false|null)/, weight: 5 },
   { re: /^[\s]*[{[][\s\S]*[}\]][\s]*$/, weight: 2 },
 ];
+
+/**
+ * Java, which is not in this set. It looks more like C# than anything that is,
+ * and enough like TypeScript to win on `public` and a braced class, so these
+ * count against both: `main` is lowercase there, `String[]` is capitalised, and
+ * neither `System.out` nor `@Override` exists in either language.
+ */
+const JAVA =
+  /\bSystem\.out\.print|\bpublic\s+static\s+void\s+main\s*\(|^[ \t]*import\s+javax?\.|\bString\[\]\s+\w+|@Override\b/m;
 
 /** Things that rule a language out however well it otherwise scored: a brace
  *  at the end of a line is not Python, and JSON holds no code. */
@@ -137,6 +191,12 @@ const AGAINST: Partial<Record<DetectedLanguage, Signal[]>> = {
     { re: /=>|\bfunction\b|\bdef\b|\bfn\b/, weight: 6 },
   ],
   rust: [{ re: /^[ \t]*def\s|\bself\.\w/m, weight: 4 }],
+  csharp: [{ re: JAVA, weight: 12 }],
+  typescript: [{ re: JAVA, weight: 6 }],
+  javascript: [{ re: JAVA, weight: 6 }],
+  // The preprocessor and `std::` belong to C++; nothing else here has them, so
+  // a block carrying neither has to earn the label on its other signals.
+  cpp: [{ re: /\bConsole\.Write|^[ \t]*using\s+System\b/m, weight: 6 }],
 };
 
 function score(code: string, signals: Signal[]): number {
@@ -177,6 +237,8 @@ function detect(code: string): DetectedLanguage | null {
     javascript: ts > 0 ? 0 : js,
     python: score(body, PYTHON),
     rust: score(body, RUST),
+    cpp: score(body, CPP),
+    csharp: score(body, CSHARP),
     sql: score(body, SQL),
     json: score(body, JSON_SIGNALS),
   };

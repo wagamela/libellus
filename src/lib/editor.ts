@@ -1,4 +1,10 @@
-import { HighlightStyle, syntaxHighlighting, indentUnit } from "@codemirror/language";
+import {
+  HighlightStyle,
+  LanguageSupport,
+  syntaxHighlighting,
+  indentUnit,
+  type StreamLanguage,
+} from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
 import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
@@ -119,12 +125,31 @@ export async function loadLanguage(language: Language): Promise<Extension> {
       return (await import("@codemirror/lang-python")).python();
     case "rust":
       return (await import("@codemirror/lang-rust")).rust();
+    case "cpp":
+      return (await import("@codemirror/lang-cpp")).cpp();
+    case "csharp":
+      return new LanguageSupport(await csharpLanguage());
     case "sql":
       return (await import("@codemirror/lang-sql")).sql();
     case "text":
     default:
       return [];
   }
+}
+
+/**
+ * C# has no Lezer grammar of its own in the CodeMirror packages; it comes from
+ * the legacy stream mode instead, wrapped so it presents the same `Language`
+ * the rest of this module deals in. A stream mode tags its tokens with the
+ * same standard tags a Lezer grammar does, so the palette applies to it
+ * unchanged — it simply looks at one line at a time rather than at a tree.
+ */
+async function csharpLanguage(): Promise<StreamLanguage<unknown>> {
+  const [{ StreamLanguage }, { csharp }] = await Promise.all([
+    import("@codemirror/language"),
+    import("@codemirror/legacy-modes/mode/clike"),
+  ]);
+  return StreamLanguage.define(csharp);
 }
 
 /**
@@ -149,6 +174,10 @@ export async function loadParser(language: Language): Promise<Parser | null> {
       return (await import("@codemirror/lang-python")).pythonLanguage.parser;
     case "rust":
       return (await import("@codemirror/lang-rust")).rustLanguage.parser;
+    case "cpp":
+      return (await import("@codemirror/lang-cpp")).cppLanguage.parser;
+    case "csharp":
+      return (await csharpLanguage()).parser;
     case "sql":
       return (await import("@codemirror/lang-sql")).StandardSQL.language.parser;
     default:

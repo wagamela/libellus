@@ -27,8 +27,10 @@ shell and the editor. See `project_spec.md` for the full product scope and
   drawn as its own surface and the document itself stays plain markdown text
 - A block works out its own language. Nothing is declared and nothing is set
   by hand: the code is read, recognised, and coloured in whatever it turned out
-  to be — TypeScript, JavaScript, Python, Rust, SQL or JSON. Code that is not
-  recognised confidently stays plain rather than being coloured as a guess
+  to be — TypeScript, JavaScript, Python, Rust, C++, C#, SQL or JSON. Code that
+  is not recognised confidently stays plain rather than being coloured as a
+  guess, and a language with no grammar here (Java, say) is declined rather than
+  labelled as the nearest thing
 - The block's header says what it found on the right, beside the `copy` control
   that copies the code alone. The field on the left is the snippet's own title
   or a note on what it is for — it is yours to write and has no effect on the
