@@ -573,7 +573,15 @@ const fenceGuard = EditorState.transactionFilter.of((tr) => {
           : null;
     if (on === null) continue;
     const forward = head >= tr.changes.mapPos(tr.startState.selection.main.head);
-    return [tr, { selection: EditorSelection.cursor(pastLine(doc, on, forward)) }];
+    // `sequential` because this position was worked out in `tr.newDoc`. Without
+    // it the appended spec is read against the document the transaction started
+    // from and mapped forward, so any edit that grows the document past that
+    // length — pasting a block into an empty note, say — asks for a position
+    // the old document never had and the whole edit throws.
+    return [
+      tr,
+      { selection: EditorSelection.cursor(pastLine(doc, on, forward)), sequential: true },
+    ];
   }
   return tr;
 });
