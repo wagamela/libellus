@@ -239,6 +239,22 @@
   border: 0;
 }
 
+/* Prose emphasis. Bold and italic are the markdown grammar's own styling; the
+   underline is drawn here, because markdown has no underline and `<u>…</u>` is
+   how the document says it.
+
+   What both share is that the markers are hidden — and that they come back,
+   dimmed, when the selection touches the span. Dimmed rather than coloured: a
+   marker is the quietest thing on its line, the same standing a code fence has,
+   and it is there to be edited, not read. */
+.cm-editor .cm-underline {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.cm-editor .cm-emphasis-mark {
+  color: var(--color-muted);
+}
+
 /* Pasted images. The picture stands in for its reference text, so the line
    reads as the image itself. Sized in `max-` terms only: nothing here
    animates, and the widget never re-measures on hover. */

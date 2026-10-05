@@ -23,6 +23,7 @@ import { loadLanguage, libellusTheme } from "../lib/editor";
 import { libellusImages } from "../lib/imageView";
 import { libellusCodeBlocks } from "../lib/codeBlocks";
 import { libellusCodeHighlight } from "../lib/codeHighlight";
+import { libellusEmphasis } from "../lib/emphasis";
 import type { Doc } from "../lib/types";
 
 interface EditorProps {
@@ -94,6 +95,9 @@ export function Editor({ doc, onChange, onSave, autoFocus = true }: EditorProps)
           libellusImages,
           libellusCodeBlocks,
           libellusCodeHighlight,
+          // Prose markup, drawn without its markers. A snippet is code, where
+          // an asterisk is an operator and `<u>` is a tag.
+          ...(doc.kind === "note" ? [libellusEmphasis] : []),
           keymap.of([
             {
               key: "Mod-s",

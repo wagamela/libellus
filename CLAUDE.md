@@ -60,8 +60,9 @@ out of the startup bundle. Adding one means `Language`/`LANGUAGES` in `types.ts`
 case, a `loadParser` case, and a set of signals in `detect.ts` so a snippet can be recognised as
 it.
 
-**Rich content is plain text.** Images (`src/lib/images.ts`, `src/lib/imageView.ts`) and code
-snippet areas (`src/lib/codeBlocks.ts`) add no fields to `Doc`: an image is a
+**Rich content is plain text.** Images (`src/lib/images.ts`, `src/lib/imageView.ts`), code
+snippet areas (`src/lib/codeBlocks.ts`) and prose emphasis (`src/lib/emphasis.ts`) add no
+fields to `Doc`: an image is a
 `![](libellus:name)` reference and a code block is an ordinary ``` fence. A fence's info
 string is the snippet's title and nothing else — it never names a language, which is why
 markdown is loaded without `codeLanguages`. A block's language is recognised from the code
@@ -70,6 +71,17 @@ header; there is no way to declare or override it, by design. The editor decorat
 those spans, so the body stays markdown that saves out and searches as written, and nothing
 about this needs a store migration. Keep anything in this family the same way — a decoration
 over text the user could have typed, never a new shape in the document model.
+
+Emphasis is the same bargain: `Ctrl B` / `Ctrl I` / `Ctrl U` write `**bold**`, `*italic*` and
+`<u>underlined</u>` into the body and nothing else. Markdown has no underline, which is why
+that one is the HTML tag and why it is the only one `emphasis.ts` styles itself — the markdown
+grammar already styles the other two through `TOKEN_STYLES`. The markers are hidden rather
+than drawn, and revealed again whenever the selection touches the span: hidden text the caret
+can enter blind is the one thing this family must not produce. `emphasis.ts` therefore has two
+halves — `toggleEmphasis`, which finds a marker pair by scanning the line, and the decorations,
+which ask the *syntax tree* which asterisks are markup so that `2 * 3 * 4`, a `* bullet` list
+and anything inside code keep theirs. Both the commands and the decorations are notes only: in
+a snippet an asterisk is an operator.
 
 **Search.** `src/lib/search.ts` is an in-memory subsequence ranker over titles and bodies,
 deliberately simple until SQLite FTS replaces it.

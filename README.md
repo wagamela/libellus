@@ -40,6 +40,19 @@ shell and the editor. See `project_spec.md` for the full product scope and
   take a hue of their own — few and desaturated, with names and punctuation left
   grey — so the shape of a snippet reads at a glance. It stops at the edge of the
   code: prose, chrome, tabs and menus stay achromatic
+- Bold, italic and underlined prose in a note (`Ctrl B` / `Ctrl I` / `Ctrl U`,
+  also in the Edit menu and the command palette). Each is a toggle: it wraps
+  the selection, or unwraps again when the caret is already inside a span. What
+  it writes is markdown — `**bold**`, `*italic*` and, since markdown has no
+  underline of its own, `<u>underlined</u>` — so the document still saves out
+  and searches as written
+- You do not see the markers. Bold reads as bold and the asterisks are not
+  drawn at all; they reappear, dimmed, the moment the selection touches the
+  span, so the markup can still be edited by hand and no text is ever hidden
+  where the caret could walk into it blind. Which asterisks are markup is the
+  markdown parser's answer, not a guess: `2 * 3 * 4`, a `* bullet` list and
+  anything inside code keep their asterisks. Snippets are code all the way
+  through and take none of this, and neither does a code block inside a note
 - Paste (or drop) images into a document: each is stored as a file beside the
   workspace and drawn in place of its reference, wherever the caret is — one
   to a line, or several side by side
@@ -89,6 +102,9 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 | Save             | `Ctrl S`       |
 | Save as          | `Ctrl Shift S` |
 | Find in document | `Ctrl F`       |
+| Bold             | `Ctrl B`       |
+| Italic           | `Ctrl I`       |
+| Underline        | `Ctrl U`       |
 | Insert code block| `Ctrl Alt C`   |
 | Paste image      | `Ctrl V`       |
 | Rename tab       | `F2`           |
@@ -105,8 +121,8 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 src/
   components/   MenuBar, TabBar, Editor, CommandPalette, StatusBar
   lib/          types, storage, images, code blocks, snippet language
-                detection and highlighting, files, search, editor theme and
-                lazy language loading
+                detection and highlighting, prose emphasis, files, search,
+                editor theme and lazy language loading
   store/        zustand workspace store (documents, tabs, autosave)
 src-tauri/      Rust shell; load_store / save_store, the image commands and
                 save_document_as

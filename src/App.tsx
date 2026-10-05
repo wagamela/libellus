@@ -7,6 +7,7 @@ import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
 import { searchDocs } from "./lib/search";
 import { activeEditor } from "./lib/editor";
 import { blockAtCursor, codeBlockBody, insertCodeBlock } from "./lib/codeBlocks";
+import { toggleEmphasis, type Emphasis } from "./lib/emphasis";
 import { LANGUAGES } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
 
@@ -84,6 +85,18 @@ export default function App() {
     // and the language is recognised from the code rather than declared.
     insertCodeBlock(() => null)(view);
   }, []);
+  // Emphasis is markdown in the body, so it runs against the editor too. It
+  // is prose markup: a snippet is code all the way through, and `**` there
+  // would be code rather than emphasis, so only a note takes it.
+  const emphasise = useCallback(
+    (kind: Emphasis) => {
+      const view = activeEditor();
+      if (!view || activeDoc?.kind !== "note") return;
+      toggleEmphasis(kind)(view);
+    },
+    [activeDoc],
+  );
+  const prose = activeDoc?.kind === "note";
   const copyCode = useCallback(() => {
     const view = activeEditor();
     const code = view ? codeBlockBody(view) : null;
@@ -126,6 +139,12 @@ export default function App() {
       } else if (key === "w") {
         event.preventDefault();
         closeActive();
+      } else if ((key === "b" || key === "i" || key === "u") && !event.shiftKey && !event.altKey) {
+        // Plain Ctrl, never with Shift: Ctrl Shift I is the browser's inspector
+        // and `npm run dev` runs in a browser. Prevented either way, so the
+        // content-editable the editor is built on never applies its own bold.
+        event.preventDefault();
+        emphasise(key === "b" ? "bold" : key === "i" ? "italic" : "underline");
       } else if (key === "c" && event.altKey) {
         // Ctrl Alt C rather than Ctrl Shift C: the browser claims that one for
         // its inspector, and `npm run dev` runs in a browser.
@@ -145,7 +164,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, moveActiveTab, insertCode, store]);
+  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, moveActiveTab, insertCode, emphasise, store]);
 
   // Persist on the way out so an autosave in flight is never lost.
   useEffect(() => {
@@ -162,6 +181,17 @@ export default function App() {
       { id: "save", label: "save", hint: "Ctrl S", run: save },
       { id: "save-as", label: "save as…", hint: "Ctrl Shift S", run: saveAs },
       { id: "code", label: "insert code block", hint: "Ctrl Alt C", run: insertCode },
+      // Emphasis reads as one group in the list, in the order the keys sit on
+      // the keyboard. Each says what it writes: the body is markdown, and the
+      // markers stay in it.
+      { id: "bold", label: "bold", hint: prose ? "Ctrl B" : "notes only", run: () => emphasise("bold") },
+      { id: "italic", label: "italic", hint: prose ? "Ctrl I" : "notes only", run: () => emphasise("italic") },
+      {
+        id: "underline",
+        label: "underline",
+        hint: prose ? "Ctrl U" : "notes only",
+        run: () => emphasise("underline"),
+      },
       { id: "find", label: "find in document", hint: "Ctrl F", run: findInDoc },
       { id: "rename", label: "rename tab", hint: "F2", run: renameActive },
       { id: "close", label: "close tab", hint: "Ctrl W", run: closeActive },
@@ -192,7 +222,7 @@ export default function App() {
         run: () => moveActiveTab(1),
       },
     ],
-    [newNote, newSnippet, save, saveAs, findInDoc, insertCode, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, armed, activeDoc, store],
+    [newNote, newSnippet, save, saveAs, findInDoc, insertCode, emphasise, prose, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, armed, activeDoc, store],
   );
 
   const buildCommands = useCallback(
@@ -310,8 +340,17 @@ export default function App() {
     {
       label: "Edit",
       items: [
+        { label: "Bold", shortcut: "Ctrl B", action: () => emphasise("bold"), disabled: !prose },
+        { label: "Italic", shortcut: "Ctrl I", action: () => emphasise("italic"), disabled: !prose },
+        {
+          label: "Underline",
+          shortcut: "Ctrl U",
+          action: () => emphasise("underline"),
+          disabled: !prose,
+        },
         {
           label: "Insert Code Block",
+          separatorBefore: true,
           shortcut: "Ctrl Alt C",
           action: insertCode,
           disabled: !activeDoc,

@@ -348,6 +348,13 @@ productivity cards.
 A note should provide a clean reading and editing environment. The
 content should dominate the interface.
 
+Emphasis (bold, italic, underline) is written into the document as markdown
+rather than stored as formatting. The markers themselves are not drawn: bold
+text simply reads as bold, and the characters that say so come back — dimmed,
+the standing a code fence has — as soon as the selection touches the span. A
+note is still its text, and nothing is hidden that the caret can reach without
+seeing it.
+
 Avoid turning notes into a large visual block editor unless a real
 feature requires it.
 
