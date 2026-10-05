@@ -151,6 +151,25 @@ const SQL: Signal[] = [
   { re: /\bwhere\b/i, weight: 2 },
 ];
 
+/**
+ * HTML is the one language here made of markup rather than statements, and a
+ * closing tag is something nothing else in this set can produce. The weight
+ * sits on the shapes that need a tag to exist at all — a doctype, a closing
+ * tag, a quoted attribute — rather than on `<` and `>`, which C++ templates
+ * and Rust generics are full of.
+ */
+const HTML: Signal[] = [
+  { re: /<!doctype\s+html/i, weight: 8 },
+  { re: /<\/(?:div|span|p|a|li|ul|ol|t[dhr]|table|section|article|header|footer|nav|main|aside|button|label|form|h[1-6]|html|head|body|title|script|style|pre|code|strong|em)\s*>/i, weight: 7 },
+  { re: /<(?:html|head|body|meta|link|title)\b/i, weight: 6 },
+  { re: /<(?:div|span|p|a|img|ul|ol|li|table|t[dhr]|form|input|button|label|select|option|textarea|section|article|header|footer|nav|main|aside|h[1-6]|br|hr|pre|code|strong|em|script|style|iframe|canvas|svg|video|audio|template)\b[^<>]*>/i, weight: 5 },
+  { re: /<\/[a-zA-Z][\w-]*\s*>/, weight: 5 },
+  { re: /\s(?:class|id|href|src|alt|rel|charset|placeholder|target|type|name|value|style|width|height|lang|title|aria-[\w-]+|data-[\w-]+)\s*=\s*["']/, weight: 4 },
+  { re: /&(?:nbsp|amp|lt|gt|quot|apos|#\d+);/, weight: 3 },
+  { re: /<!--[\s\S]*?-->/, weight: 3 },
+  { re: /<[a-zA-Z][\w-]*[^<>]*\/>/, weight: 2 },
+];
+
 /** JSON is checked by shape first (see below); these only catch the fragment
  *  that is still being pasted and does not parse yet. */
 const JSON_SIGNALS: Signal[] = [
@@ -197,6 +216,13 @@ const AGAINST: Partial<Record<DetectedLanguage, Signal[]>> = {
   // The preprocessor and `std::` belong to C++; nothing else here has them, so
   // a block carrying neither has to earn the label on its other signals.
   cpp: [{ re: /\bConsole\.Write|^[ \t]*using\s+System\b/m, weight: 6 }],
+  // A React component is JavaScript that happens to contain tags, and a
+  // template is whatever language renders the tags; markup alone is not enough,
+  // so the things only a program or a template can carry count against it.
+  html: [
+    { re: /\bclassName\s*=|=>|\b(?:const|let|var|function|def|fn|import|export|return)\b/, weight: 9 },
+    { re: /\{\{[^}\n]*\}\}|\{%[^}\n]*%\}|<\?php|\{\s*[A-Za-z_$][\w$.]*\s*\}/, weight: 4 },
+  ],
 };
 
 function score(code: string, signals: Signal[]): number {
@@ -240,6 +266,7 @@ function detect(code: string): DetectedLanguage | null {
     cpp: score(body, CPP),
     csharp: score(body, CSHARP),
     sql: score(body, SQL),
+    html: score(body, HTML),
     json: score(body, JSON_SIGNALS),
   };
   for (const [language, signals] of Object.entries(AGAINST)) {

@@ -5,6 +5,7 @@ export type Language =
   | "typescript"
   | "javascript"
   | "json"
+  | "html"
   | "python"
   | "rust"
   | "cpp"
@@ -44,6 +45,7 @@ export const LANGUAGES: Language[] = [
   "typescript",
   "javascript",
   "json",
+  "html",
   "python",
   "rust",
   "cpp",
@@ -62,6 +64,7 @@ export const LANGUAGE_EXTENSION: Record<Language, string> = {
   typescript: "ts",
   javascript: "js",
   json: "json",
+  html: "html",
   python: "py",
   rust: "rs",
   cpp: "cpp",

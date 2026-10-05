@@ -121,6 +121,8 @@ export async function loadLanguage(language: Language): Promise<Extension> {
       return (await import("@codemirror/lang-javascript")).javascript();
     case "json":
       return (await import("@codemirror/lang-json")).json();
+    case "html":
+      return (await import("@codemirror/lang-html")).html();
     case "python":
       return (await import("@codemirror/lang-python")).python();
     case "rust":
@@ -170,6 +172,8 @@ export async function loadParser(language: Language): Promise<Parser | null> {
       return (await import("@codemirror/lang-javascript")).javascriptLanguage.parser;
     case "json":
       return (await import("@codemirror/lang-json")).jsonLanguage.parser;
+    case "html":
+      return (await import("@codemirror/lang-html")).htmlLanguage.parser;
     case "python":
       return (await import("@codemirror/lang-python")).pythonLanguage.parser;
     case "rust":
