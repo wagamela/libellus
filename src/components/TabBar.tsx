@@ -74,7 +74,7 @@ function TabRename({ doc, onEnd }: { doc: Doc; onEnd: (title: string | null) => 
         if (event.key === "Enter") end(value);
         else if (event.key === "Escape") end(null);
       }}
-      className="min-w-0 flex-1 bg-raised px-1 text-[12px] text-text outline-none placeholder:text-muted"
+      className="min-w-0 flex-1 rounded-sm bg-raised px-1.5 text-[12px] text-text outline-none placeholder:text-muted"
     />
   );
 }
@@ -231,7 +231,7 @@ export function TabBar({
   return (
     <div
       ref={strip}
-      className="flex h-9 shrink-0 items-stretch gap-px overflow-x-auto bg-tabbar"
+      className="flex h-10 shrink-0 items-stretch gap-1 overflow-x-auto bg-tabbar p-1"
     >
       {tabs.map((doc, index) => {
         const active = doc.id === activeId;
@@ -276,11 +276,13 @@ export function TabBar({
               if (event.key === "Enter") onSelect(doc.id);
               else if (event.key === "F2") onRenameStart(doc.id);
             }}
-            // The selected tab is the darker of the pair; the 1px gap between
-            // tabs is the strip showing through. A tab being dragged is lifted
-            // out of that strip — above its neighbours, under the same shadow
-            // the menus cast — and only `transform` ever moves it.
-            className={`group relative flex max-w-60 min-w-28 items-center gap-2 px-3 text-[12px] ${
+            // The selected tab is the darker of the pair. Tabs are rounded
+            // blocks held apart by a small gap and inset from every edge of the
+            // strip, so the strip reads as the surface they sit on rather than a
+            // row they are cut out of. A tab being dragged is lifted out of that
+            // strip — above its neighbours, under the same shadow the menus cast
+            // — and only `transform` ever moves it.
+            className={`group relative flex max-w-60 min-w-28 items-center gap-2 rounded-lg px-3 text-[12px] ${
               active
                 ? "bg-tab-active text-text"
                 : "bg-tab text-dim hover:bg-tab-hover hover:text-text active:bg-pressed"
@@ -322,12 +324,12 @@ export function TabBar({
           </div>
         );
       })}
-      {/* A tab-shaped block, held apart by the same 1px gap as the tabs. */}
+      {/* A tab-shaped block, rounded and spaced like the tabs beside it. */}
       <button
         aria-label="new note"
         title="new note (Ctrl N)"
         onClick={onNew}
-        className="grid w-10 shrink-0 place-items-center bg-tab text-[15px] leading-none text-dim hover:bg-tab-hover hover:text-text active:bg-pressed"
+        className="grid w-10 shrink-0 place-items-center rounded-lg bg-tab text-[15px] leading-none text-dim hover:bg-tab-hover hover:text-text active:bg-pressed"
       >
         +
       </button>
@@ -340,14 +342,14 @@ export function TabBar({
           onMouseDown={(event) => event.stopPropagation()}
           style={{
             left: Math.min(menu.x, window.innerWidth - 160),
-            top: Math.min(menu.y, window.innerHeight - 8 - items.length * 26),
+            top: Math.min(menu.y, window.innerHeight - 20 - items.length * 26),
           }}
-          className="fixed z-50 min-w-36 bg-surface py-1 shadow-[0_8px_24px_#00000066]"
+          className="fixed z-50 min-w-36 rounded-xl bg-surface p-1.5 shadow-[0_8px_24px_#00000066]"
         >
           {items.map((item) => (
             <button
               key={item.label}
-              className={`block w-full px-3 py-[5px] text-left text-[12px] text-text hover:bg-raised active:bg-pressed ${
+              className={`block w-full rounded-md px-2.5 py-[5px] text-left text-[12px] text-text hover:bg-raised active:bg-pressed ${
                 armed === item.label ? "bg-raised" : ""
               }`}
               onClick={() => {

@@ -66,12 +66,17 @@ space is acceptable when it improves focus.
 
 ### 2.3 Flat visual language
 
-Prefer solid backgrounds, thin borders, subtle separators, typography,
-spacing, and simple state indicators.
+Prefer solid backgrounds, soft rounded geometry, typography, spacing, and
+simple state indicators.
 
 Avoid heavy shadows, glassmorphism, large gradients, excessive blur,
 decorative backgrounds, floating cards everywhere, and excessive depth
 effects.
+
+Flat is about **depth**, not about shape. Surfaces stay unlit and
+un-outlined, but their corners are generously rounded: softness costs
+nothing in density and makes a block legible against a surface almost the
+same colour as it. See §10.
 
 ### 2.4 No generic card-based dashboard
 
@@ -139,9 +144,10 @@ Tab rules:
 -   Keep tabs compact.
 -   Make active tabs distinguishable without making them excessively
     bright.
--   Avoid large rounded tab containers.
+-   Tabs are rounded blocks (`--radius-lg`) inset from every edge of the
+    strip and held apart by a small gap, so the strip reads as the surface
+    they sit on rather than a row they are cut out of.
 -   Avoid excessive icons.
--   Use subtle separators.
 -   Truncate long titles gracefully.
 -   Support closing tabs.
 -   Preserve open tabs when appropriate.
@@ -274,21 +280,49 @@ active tab by sharing the editor's surface, and a selected row by a slightly
 lighter background.
 
 The overall look should stay very plain: flat blocks of near-identical colour,
-no outlines, no decorative depth. Shadows are used only to lift a floating
-layer (a menu, the command palette) off the surface beneath it. Focus rings
-and the text caret are not separators and remain.
+no outlines, no decorative depth. What a border would have done is done by the
+corner radius instead — a rounded edge is enough to read a block as a block,
+with no line drawn anywhere. Shadows are used only to lift a floating layer (a
+menu, the command palette) off the surface beneath it. Focus rings and the text
+caret are not separators and remain; a focus ring follows the radius of what it
+surrounds.
 
 ------------------------------------------------------------------------
 
 ## 10. Shapes and Corners
 
-Libellus should generally use square or very slightly rounded geometry.
+Libellus uses **soft, generously rounded geometry**. Corners are the one
+piece of shape the interface allows itself: with no borders and surfaces only
+a few steps apart in brightness, the radius is what gives a tab, a snippet, a
+menu or a selected row a readable edge.
 
-Avoid large pill shapes, excessive rounded corners, bubble-like
-controls, and highly rounded cards.
+The scale lives in `@theme` in `src/styles.css` and grows with the thing it
+rounds, so a control is always rounded less than the surface holding it:
 
-Buttons, tabs, inputs, menus, and panels should feel like parts of a
-technical desktop application.
+``` text
+--radius-xs   4px   micro affordances inside text — a search match
+--radius-sm   6px   small inline controls — snippet title field, copy, delete
+--radius-md   8px   blocks and rows — code blocks, images, menu and list items
+--radius-lg  12px   chrome blocks — tabs, the new-tab button, menu titles
+--radius-xl  16px   floating layers — menus, the context menu, the palette
+```
+
+Rules:
+
+-   Use the tokens (`rounded-sm` … `rounded-xl`); never a one-off pixel
+    radius in a component.
+-   A child is rounded one step below its parent, and is inset far enough
+    that its corners never fight the parent's. Floating layers carry
+    `p-1.5` for exactly this reason.
+-   Where a control *is* the edge of a panel rather than something sitting on
+    it — the command palette's query field — it takes the panel's corners via
+    `overflow-hidden` instead of a radius of its own.
+-   Softness is not roominess: radii went up, padding did not. Density (§16)
+    is unchanged.
+
+Still avoided: full pill shapes on anything that is not a dot, bubble-like
+or card-like containers, and rounding used as decoration rather than as the
+edge of a real surface.
 
 ------------------------------------------------------------------------
 
@@ -485,7 +519,6 @@ functional reason:
 -   Glassmorphism
 -   Heavy gradients
 -   Excessive shadows
--   Huge rounded corners
 -   Pill-shaped UI everywhere
 -   Giant colorful icons
 -   Excessive accent colors
@@ -541,6 +574,8 @@ Tab-based
 Keyboard-first
     +
 Flat
+    +
+Soft-cornered
     +
 Quiet
 ```

@@ -41,7 +41,9 @@ export function MenuBar({ menus }: { menus: Menu[] }) {
       {menus.map((menu) => (
         <div key={menu.label} className="relative flex">
           <button
-            className={`px-3 text-[12px] tracking-wide ${
+            // Inset from the bar so the open menu's label reads as a rounded
+            // block rather than a full-height column of colour.
+            className={`my-1 rounded-lg px-3 text-[12px] tracking-wide ${
               open === menu.label ? "bg-raised text-text" : "text-dim hover:text-text"
             }`}
             onMouseDown={(event) => {
@@ -53,14 +55,17 @@ export function MenuBar({ menus }: { menus: Menu[] }) {
             {menu.label}
           </button>
           {open === menu.label && (
-            <div className="absolute top-8 left-0 z-50 min-w-56 bg-surface py-1 shadow-[0_8px_24px_#00000066]">
+            // A floating layer: the most rounded surface in the app, with its
+            // items inset far enough that their own rounding never fights the
+            // panel's corners.
+            <div className="absolute top-8 left-0 z-50 min-w-56 rounded-xl bg-surface p-1.5 shadow-[0_8px_24px_#00000066]">
               {menu.items.map((item) => (
                 <div key={item.label}>
                   {/* Groups are spaced apart, never ruled off. */}
                   {item.separatorBefore && <div className="h-2" />}
                   <button
                     disabled={item.disabled}
-                    className={`flex w-full items-center justify-between gap-8 px-3 py-[5px] text-left text-[12px] ${
+                    className={`flex w-full items-center justify-between gap-8 rounded-md px-2.5 py-[5px] text-left text-[12px] ${
                       item.disabled
                         ? "text-muted"
                         : "text-text hover:bg-raised active:bg-pressed"

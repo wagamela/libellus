@@ -91,7 +91,10 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
       onMouseDown={onClose}
     >
       <div
-        className="h-fit w-[min(680px,90vw)] bg-chrome shadow-[0_16px_48px_#00000080]"
+        // `overflow-hidden` is what rounds the query field: it is the top of
+        // this surface rather than a control sitting on it, so it takes the
+        // panel's own corners instead of carrying a radius of its own.
+        className="h-fit w-[min(680px,90vw)] overflow-hidden rounded-xl bg-chrome shadow-[0_16px_48px_#00000080]"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <input
@@ -124,9 +127,11 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
           }}
           className="w-full bg-surface px-4 py-3 text-[13px] text-text outline-none placeholder:text-muted"
         />
-        <div ref={listRef} className="max-h-[52vh] overflow-y-auto py-1">
+        {/* The list is inset so a selected row can be a rounded block; the
+            row's own padding makes its text line up with the field above. */}
+        <div ref={listRef} className="max-h-[52vh] overflow-y-auto p-1.5">
           {items.length === 0 && (
-            <div className="px-4 py-3 text-[12px] text-muted">no matches</div>
+            <div className="px-2.5 py-3 text-[12px] text-muted">no matches</div>
           )}
           {items.map((item, index) => (
             // A row is a container rather than one button: deletable rows
@@ -140,7 +145,7 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
                 setCursor(index);
                 setArmed(null);
               }}
-              className={`group flex w-full items-baseline gap-3 px-4 py-[6px] ${
+              className={`group flex w-full items-baseline gap-3 rounded-md px-2.5 py-[6px] ${
                 index === cursor ? "bg-raised" : ""
               }`}
             >
@@ -169,7 +174,7 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
                   onClick={() => remove(item)}
                   // Negative margin keeps a comfortable hit target from making
                   // the row any taller than its text already makes it.
-                  className={`-my-1 flex h-6 shrink-0 items-center gap-1.5 self-center rounded-xs px-1.5 text-[11px] hover:bg-surface hover:text-text active:bg-pressed ${
+                  className={`-my-1 flex h-6 shrink-0 items-center gap-1.5 self-center rounded-sm px-1.5 text-[11px] hover:bg-surface hover:text-text active:bg-pressed ${
                     armed === item.id
                       ? "bg-surface text-text"
                       : `text-muted ${index === cursor ? "" : "invisible group-hover:visible"}`

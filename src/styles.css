@@ -39,8 +39,18 @@
     "Geist Mono Variable", ui-monospace, "SFMono-Regular", Menlo, Consolas,
     monospace;
 
-  --radius-xs: 2px;
-  --radius-sm: 3px;
+  /* Corner radii. The geometry is soft: every surface whose edge the user can
+     see is rounded, and the scale grows with the thing it rounds, so a control
+     inside a panel is always rounded less than the panel holding it. Rounding
+     is the one piece of shape in the interface — it does the work separator
+     lines are not allowed to do, giving a block a readable edge against a
+     surface almost the same colour as it. */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  /* Floating layers only: menus, the context menu, the command palette. */
+  --radius-xl: 16px;
 
   /* The editor's leading. Chrome drawn into a line of the document — the
      header on a snippet, for one — sizes itself from this rather than
@@ -145,6 +155,7 @@
 }
 ::-webkit-scrollbar-thumb {
   background: #2e3742;
+  border-radius: 5px;
   border: 3px solid transparent;
   background-clip: content-box;
   transition: background-color var(--duration-hover) linear;
@@ -207,6 +218,7 @@
 }
 .cm-editor .cm-searchMatch {
   background: #3b4a5c;
+  border-radius: var(--radius-xs);
   outline: 1px solid var(--color-accent-dim);
 }
 .cm-editor .cm-panels {
@@ -218,7 +230,7 @@
   background: var(--color-raised);
   border: 0;
   color: var(--color-text);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   padding: 2px 6px;
 }
 .cm-tooltip.cm-tooltip-autocomplete > ul {
@@ -249,7 +261,7 @@
   max-height: 26rem;
   width: auto;
   height: auto;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--color-raised);
   object-fit: contain;
 }
@@ -258,7 +270,7 @@
   content: "image missing";
   color: var(--color-muted);
   background: var(--color-raised);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: 10px 12px;
 }
 
@@ -277,11 +289,11 @@
   /* Both sides, so the header's field sits in the middle of the header. */
   padding-top: var(--inset-code);
   padding-bottom: var(--inset-code);
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 .cm-editor .cm-code-close {
   padding-bottom: var(--inset-code);
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 /* The caret's line still reads inside a block: the active line is one step
    lighter than the block surface rather than the editor's default wash, which
@@ -326,7 +338,7 @@
   font-size: 11px;
   line-height: 1.5;
   border: 0;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   outline: 0;
 }
 .cm-editor .cm-code-lang::placeholder {
@@ -373,7 +385,7 @@
   font-size: 10px;
   line-height: 1.4;
   padding: 1px 5px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   color: var(--color-muted);
 }
 .cm-editor .cm-code-copy:hover {
