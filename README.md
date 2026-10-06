@@ -18,6 +18,13 @@ shell and the editor. See `project_spec.md` for the full product scope and
 - Named tabs: a new document opens straight into its rename field, and any tab
   can be renamed later by double-clicking it, right-clicking it, or `F2`. A
   name left empty hands the tab back to the first line of the document
+- A right-click menu of its own, everywhere: on a tab (rename, close, close
+  others, delete), in the editor (cut/copy/paste, select all, emphasis, code
+  block, find, save), on the tab strip and over the chrome (new note, new
+  snippet, quick open, command palette). It is the same panel the menu bar
+  drops, placed at the cursor, keyboard-navigable, and it never shows the
+  webview's own menu — except in a text field, where the platform's menu is
+  the better one
 - Command palette (`Ctrl K`) and quick open with local search over titles and
   bodies (`Ctrl P`). Each quick-open row carries a delete control (`Ctrl D` on
   the highlighted row): it arms on the first press and deletes on the second,
@@ -119,7 +126,8 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 
 ```text
 src/
-  components/   MenuBar, TabBar, Editor, CommandPalette, StatusBar
+  components/   MenuBar, ContextMenu (the shared menu panel), TabBar, Editor,
+                CommandPalette, StatusBar
   lib/          types, storage, images, code blocks, snippet language
                 detection and highlighting, prose emphasis, files, search,
                 editor theme and lazy language loading

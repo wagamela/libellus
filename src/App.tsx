@@ -4,6 +4,7 @@ import { TabBar } from "./components/TabBar";
 import { Editor } from "./components/Editor";
 import { StatusBar } from "./components/StatusBar";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
+import { ContextMenu, type ContextMenuState, type MenuAction } from "./components/ContextMenu";
 import { searchDocs } from "./lib/search";
 import { activeEditor } from "./lib/editor";
 import { blockAtCursor, codeBlockBody, insertCodeBlock } from "./lib/codeBlocks";
@@ -18,6 +19,9 @@ export default function App() {
   const [palette, setPalette] = useState<PaletteMode>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  /** The menu at the pointer, if one is open. There is one in the app: what a
+   *  right-click means is decided here, from what it landed on. */
+  const [context, setContext] = useState<ContextMenuState | null>(null);
 
   useEffect(() => {
     void store.init();
@@ -65,6 +69,12 @@ export default function App() {
     },
     [store],
   );
+  const closeOthers = useCallback(
+    (keep: string) => {
+      for (const id of [...store.openTabs]) if (id !== keep) store.closeTab(id);
+    },
+    [store],
+  );
   const deleteActive = useCallback(() => {
     const id = store.activeTab;
     if (!id) return;
@@ -102,6 +112,50 @@ export default function App() {
     const code = view ? codeBlockBody(view) : null;
     if (code !== null) void navigator.clipboard.writeText(code);
   }, []);
+  // Cut, copy, paste and select-all are the webview's own menu items, and the
+  // webview's menu is not shown any more — so they are run against the editor
+  // state here rather than through `execCommand`, which Chromium declines for
+  // paste anyway. Each leaves the caret in the editor: a menu took focus to be
+  // clicked, and an edit the user cannot carry on typing after is half an edit.
+  const copySelection = useCallback(() => {
+    const view = activeEditor();
+    if (!view) return;
+    const { from, to } = view.state.selection.main;
+    if (from === to) return;
+    void navigator.clipboard.writeText(view.state.sliceDoc(from, to));
+    focusEditor();
+  }, [focusEditor]);
+  const cutSelection = useCallback(() => {
+    const view = activeEditor();
+    if (!view) return;
+    const { from, to } = view.state.selection.main;
+    if (from === to) return;
+    void navigator.clipboard.writeText(view.state.sliceDoc(from, to));
+    view.dispatch({
+      changes: { from, to, insert: "" },
+      selection: { anchor: from },
+      scrollIntoView: true,
+      userEvent: "delete.cut",
+    });
+    focusEditor();
+  }, [focusEditor]);
+  const pasteIntoDoc = useCallback(() => {
+    const view = activeEditor();
+    if (!view) return;
+    // Text only: an image in the clipboard arrives as a file, which the paste
+    // keystroke the editor already handles is what stores it.
+    void navigator.clipboard.readText().then((text) => {
+      if (!text) return;
+      view.dispatch(view.state.replaceSelection(text), { userEvent: "input.paste" });
+      focusEditor();
+    });
+  }, [focusEditor]);
+  const selectAllInDoc = useCallback(() => {
+    const view = activeEditor();
+    if (!view) return;
+    view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
+    focusEditor();
+  }, [focusEditor]);
   const findInDoc = useCallback(() => {
     // CodeMirror owns in-document search; hand it the keystroke it expects.
     const content = document.querySelector<HTMLElement>(".cm-content");
@@ -409,8 +463,163 @@ export default function App() {
     },
   ];
 
+  // What a right-click means, decided from what it landed on. The items come
+  // from the same callbacks the menu bar and the palette are built from, so a
+  // command never has one behaviour in a menu and another at the pointer; a
+  // context menu is only ever a short, local selection of them.
+  const contextFor = useCallback(
+    (event: React.MouseEvent): ContextMenuState | null => {
+      const target = event.target as HTMLElement;
+      // A text field keeps the platform's own menu. It is the one place where
+      // the OS knows things this app does not — spelling, input methods, the
+      // clipboard it will not hand a web page unprompted.
+      if (target.closest("input, textarea")) return null;
+      const at = { x: event.clientX, y: event.clientY };
+
+      const tab = target.closest<HTMLElement>("[data-tab-id]");
+      if (tab) {
+        const id = tab.dataset.tabId!;
+        // Right-clicking a tab selects it first: the menu that opens is about
+        // the document it names, so that document should be the one in view.
+        store.activate(id);
+        const items: MenuAction[] = [
+          { label: "rename", shortcut: "F2", action: () => setRenaming(id) },
+          { label: "close tab", shortcut: "Ctrl W", action: () => store.closeTab(id) },
+          {
+            label: "close other tabs",
+            action: () => closeOthers(id),
+            disabled: store.openTabs.length < 2,
+          },
+          {
+            label: "reopen closed tab",
+            shortcut: "Ctrl Shift T",
+            action: reopenTab,
+            disabled: store.closedTabs.length === 0,
+          },
+          // Deleting is irreversible, so the row arms on the first press and
+          // goes through on the second.
+          {
+            label: "delete document",
+            action: () => store.deleteDoc(id),
+            confirm: true,
+            separatorBefore: true,
+          },
+        ];
+        return { ...at, items };
+      }
+
+      if (target.closest(".editor-host")) {
+        const view = activeEditor();
+        // A right-click outside the selection puts the caret where it landed,
+        // the way a left-click would: the menu then acts on what the user is
+        // pointing at rather than on wherever the caret happened to be. A
+        // right-click inside a selection leaves that selection alone.
+        if (view) {
+          const pos = view.posAtCoords(at);
+          const { from, to } = view.state.selection.main;
+          if (pos !== null && (pos < from || pos > to)) {
+            view.dispatch({ selection: { anchor: pos } });
+          }
+        }
+        const selected = view ? !view.state.selection.main.empty : false;
+        const block = view ? blockAtCursor(view) : null;
+        const items: MenuAction[] = [
+          { label: "cut", shortcut: "Ctrl X", action: cutSelection, disabled: !selected },
+          { label: "copy", shortcut: "Ctrl C", action: copySelection, disabled: !selected },
+          { label: "paste", shortcut: "Ctrl V", action: pasteIntoDoc },
+          {
+            label: "select all",
+            shortcut: "Ctrl A",
+            action: selectAllInDoc,
+            separatorBefore: true,
+          },
+          {
+            label: "bold",
+            shortcut: "Ctrl B",
+            action: () => emphasise("bold"),
+            disabled: !prose,
+            separatorBefore: true,
+          },
+          { label: "italic", shortcut: "Ctrl I", action: () => emphasise("italic"), disabled: !prose },
+          {
+            label: "underline",
+            shortcut: "Ctrl U",
+            action: () => emphasise("underline"),
+            disabled: !prose,
+          },
+          {
+            label: "insert code block",
+            shortcut: "Ctrl Alt C",
+            action: insertCode,
+            separatorBefore: true,
+          },
+        ];
+        // Only inside a block, where there is something to copy: a menu at the
+        // pointer says what can be done here, not what exists.
+        if (block) items.push({ label: "copy code block", action: copyCode });
+        items.push(
+          { label: "find in document", shortcut: "Ctrl F", action: findInDoc, separatorBefore: true },
+          { label: "save", shortcut: "Ctrl S", action: save },
+        );
+        return { ...at, items };
+      }
+
+      if (target.closest("[data-context='tabstrip']")) {
+        return {
+          ...at,
+          items: [
+            { label: "new note", shortcut: "Ctrl N", action: newNote },
+            { label: "new snippet", shortcut: "Ctrl Shift N", action: newSnippet },
+            {
+              label: "reopen closed tab",
+              shortcut: "Ctrl Shift T",
+              action: reopenTab,
+              disabled: store.closedTabs.length === 0,
+              separatorBefore: true,
+            },
+          ],
+        };
+      }
+
+      // Anywhere else in the chrome. Nothing local to offer, so it offers the
+      // way in: a new document, or the two ways of finding an old one.
+      return {
+        ...at,
+        items: [
+          { label: "new note", shortcut: "Ctrl N", action: newNote },
+          { label: "new snippet", shortcut: "Ctrl Shift N", action: newSnippet },
+          {
+            label: "quick open",
+            shortcut: "Ctrl P",
+            action: () => setPalette("open"),
+            separatorBefore: true,
+          },
+          { label: "command palette", shortcut: "Ctrl K", action: () => setPalette("commands") },
+        ],
+      };
+    },
+    [store, closeOthers, reopenTab, cutSelection, copySelection, pasteIntoDoc, selectAllInDoc, emphasise, prose, insertCode, copyCode, findInDoc, save, newNote, newSnippet],
+  );
+
   return (
-    <div className="flex h-full flex-col bg-workspace">
+    <div
+      className="flex h-full flex-col bg-workspace"
+      // The webview's own menu never appears: this is a desktop tool, and a
+      // right-click in it is answered by the app. Text fields are the one
+      // exception, and `contextFor` returns nothing for them.
+      onContextMenu={(event) => {
+        // A right-click on an open menu is not a request for another one: the
+        // menu stays where it is rather than reopening under the pointer.
+        if ((event.target as HTMLElement).closest('[role="menu"]')) {
+          event.preventDefault();
+          return;
+        }
+        const next = contextFor(event);
+        if (!next) return;
+        event.preventDefault();
+        setContext(next);
+      }}
+    >
       <MenuBar menus={menus} />
       {tabs.length > 0 && (
         <TabBar
@@ -420,7 +629,6 @@ export default function App() {
           renamingId={renaming}
           onSelect={store.activate}
           onClose={store.closeTab}
-          onDelete={store.deleteDoc}
           onNew={newNote}
           onRenameStart={setRenaming}
           onRenameEnd={endRename}
@@ -460,6 +668,7 @@ export default function App() {
           onClose={() => setPalette(null)}
         />
       )}
+      {context && <ContextMenu state={context} onClose={() => setContext(null)} />}
     </div>
   );
 }

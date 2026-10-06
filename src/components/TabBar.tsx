@@ -11,8 +11,6 @@ interface TabBarProps {
   renamingId: string | null;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
-  /** Discards the document for good, not just its tab. */
-  onDelete: (id: string) => void;
   onNew: () => void;
   onRenameStart: (id: string) => void;
   onRenameEnd: (id: string, title: string | null) => void;
@@ -86,15 +84,11 @@ export function TabBar({
   renamingId,
   onSelect,
   onClose,
-  onDelete,
   onNew,
   onRenameStart,
   onRenameEnd,
   onMove,
 }: TabBarProps) {
-  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
-  /** Label of the menu item waiting for its second click, if any. */
-  const [armed, setArmed] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const strip = useRef<HTMLDivElement>(null);
@@ -201,36 +195,13 @@ export function TabBar({
     };
   }, [endDrag]);
 
-  useEffect(() => {
-    if (!menu) {
-      setArmed(null);
-      return;
-    }
-    const dismiss = () => setMenu(null);
-    const escape = (event: KeyboardEvent) => event.key === "Escape" && setMenu(null);
-    window.addEventListener("mousedown", dismiss);
-    window.addEventListener("keydown", escape);
-    window.addEventListener("resize", dismiss);
-    return () => {
-      window.removeEventListener("mousedown", dismiss);
-      window.removeEventListener("keydown", escape);
-      window.removeEventListener("resize", dismiss);
-    };
-  }, [menu]);
-
-  const items = menu
-    ? [
-        { label: "rename", run: () => onRenameStart(menu.id) },
-        { label: "close tab", run: () => onClose(menu.id) },
-        // Deleting is irreversible, so it takes two deliberate clicks — the
-        // same arming the palette's delete button uses.
-        { label: "delete", confirm: true, run: () => onDelete(menu.id) },
-      ]
-    : [];
-
   return (
     <div
       ref={strip}
+      // A right-click anywhere on the strip but a tab asks App for the strip's
+      // own menu; a tab carries its id, and App builds that tab's menu from the
+      // same callbacks the menu bar and the palette are built from.
+      data-context="tabstrip"
       className="flex h-10 shrink-0 items-stretch gap-1 overflow-x-auto bg-tabbar p-1"
     >
       {tabs.map((doc, index) => {
@@ -246,6 +217,7 @@ export function TabBar({
             }}
             role="tab"
             aria-selected={active}
+            data-tab-id={doc.id}
             tabIndex={0}
             onMouseDown={(event) => {
               if (event.button === 1) {
@@ -267,11 +239,6 @@ export function TabBar({
               }
             }}
             onDoubleClick={() => onRenameStart(doc.id)}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              onSelect(doc.id);
-              setMenu({ id: doc.id, x: event.clientX, y: event.clientY });
-            }}
             onKeyDown={(event) => {
               if (event.key === "Enter") onSelect(doc.id);
               else if (event.key === "F2") onRenameStart(doc.id);
@@ -334,38 +301,6 @@ export function TabBar({
         +
       </button>
       <div className="flex-1" />
-      {menu && (
-        // Positioned at the cursor and nudged back inside the window, so a tab
-        // near the right edge still opens a fully visible menu.
-        <div
-          role="menu"
-          onMouseDown={(event) => event.stopPropagation()}
-          style={{
-            left: Math.min(menu.x, window.innerWidth - 160),
-            top: Math.min(menu.y, window.innerHeight - 20 - items.length * 26),
-          }}
-          className="fixed z-50 min-w-36 rounded-xl bg-surface p-1.5 shadow-[0_8px_24px_#00000066]"
-        >
-          {items.map((item) => (
-            <button
-              key={item.label}
-              className={`block w-full rounded-md px-2.5 py-[5px] text-left text-[12px] text-text hover:bg-raised active:bg-pressed ${
-                armed === item.label ? "bg-raised" : ""
-              }`}
-              onClick={() => {
-                if (item.confirm && armed !== item.label) {
-                  setArmed(item.label);
-                  return;
-                }
-                setMenu(null);
-                item.run();
-              }}
-            >
-              {armed === item.label ? `${item.label}?` : item.label}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

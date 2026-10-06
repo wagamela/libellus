@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { MenuPanel, type MenuAction } from "./ContextMenu";
 
-export interface MenuItem {
-  label: string;
-  shortcut?: string;
-  action: () => void;
-  disabled?: boolean;
-  separatorBefore?: boolean;
-}
+/** A menu-bar item is a menu item: the bar and the context menu drop the same
+ *  panel, so there is one row shape in the app. */
+export type MenuItem = MenuAction;
 
 export interface Menu {
   label: string;
@@ -55,34 +52,13 @@ export function MenuBar({ menus }: { menus: Menu[] }) {
             {menu.label}
           </button>
           {open === menu.label && (
-            // A floating layer: the most rounded surface in the app, with its
-            // items inset far enough that their own rounding never fights the
-            // panel's corners.
-            <div className="absolute top-8 left-0 z-50 min-w-56 rounded-xl bg-surface p-1.5 shadow-[0_8px_24px_#00000066]">
-              {menu.items.map((item) => (
-                <div key={item.label}>
-                  {/* Groups are spaced apart, never ruled off. */}
-                  {item.separatorBefore && <div className="h-2" />}
-                  <button
-                    disabled={item.disabled}
-                    className={`flex w-full items-center justify-between gap-8 rounded-md px-2.5 py-[5px] text-left text-[12px] ${
-                      item.disabled
-                        ? "text-muted"
-                        : "text-text hover:bg-raised active:bg-pressed"
-                    }`}
-                    onClick={() => {
-                      setOpen(null);
-                      item.action();
-                    }}
-                  >
-                    <span>{item.label}</span>
-                    {item.shortcut && (
-                      <span className="text-[11px] text-muted">{item.shortcut}</span>
-                    )}
-                  </button>
-                </div>
-              ))}
-            </div>
+            // A floating layer, dropped from the title rather than placed at a
+            // cursor — the same panel the right-click menu is.
+            <MenuPanel
+              items={menu.items}
+              onClose={() => setOpen(null)}
+              className="absolute top-8 left-0 z-50 min-w-56"
+            />
           )}
         </div>
       ))}

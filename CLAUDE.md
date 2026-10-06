@@ -48,10 +48,19 @@ set and save status, and every mutation goes through it. Writes are debounced (~
 touch `storage.ts`. Note the `autoTitle` rule: a document's title tracks the first
 meaningful line of its body until the user renames it by hand, which clears the flag.
 
-**App.tsx is the keyboard and command hub.** Global shortcuts, the menu definitions and both
-command-palette modes (commands via `Ctrl K`, quick open via `Ctrl P`) are all assembled
-there from the same callbacks, so a new command belongs in all three lists. In-document find
-is delegated to CodeMirror by dispatching a synthetic `Ctrl F` at `.cm-content`.
+**App.tsx is the keyboard and command hub.** Global shortcuts, the menu definitions, both
+command-palette modes (commands via `Ctrl K`, quick open via `Ctrl P`) and `contextFor` —
+which decides what a right-click means from what it landed on — are all assembled there from
+the same callbacks, so a new command belongs in those lists rather than in a component.
+In-document find is delegated to CodeMirror by dispatching a synthetic `Ctrl F` at
+`.cm-content`.
+
+**One menu surface.** `src/components/ContextMenu.tsx` owns `MenuPanel` — the floating panel,
+its item states, the arming of an irreversible item and the keyboard. The menu bar drops it
+from a title and `ContextMenu` places it at the cursor; neither draws its own rows. The root
+element in App.tsx suppresses the webview's menu everywhere except inside an `input` /
+`textarea`, which keeps the platform's. A new menu is a list of `MenuAction`s, never a second
+panel.
 
 **Editor.** CodeMirror 6. `src/lib/editor.ts` holds the theme, the `TOKEN_STYLES` palette and
 the lazy grammar loaders — `loadLanguage` for the document the user is typing in, `loadParser`

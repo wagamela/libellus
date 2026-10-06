@@ -126,6 +126,28 @@ functionality.
 
 Menus should remain subtle and compact.
 
+### The menu at the pointer
+
+A right-click is answered by the application, never by the webview's own
+menu: that menu belongs to a web page, and libellus is a desktop tool. The
+one exception is a text field, where the platform knows things the app does
+not — spelling, input methods, the clipboard it will not hand a page
+unprompted — and keeps its own menu.
+
+The context menu is the *same surface* the menu bar drops: one panel, one
+set of item states, placed against the cursor instead of under a title. It
+is short and local — what can be done to the thing under the pointer, not a
+second copy of the menu bar — and its items are built from the same
+callbacks the menus and the command palette are built from, so a command
+never behaves one way in a menu and another at the pointer.
+
+Placement is measured rather than guessed: the panel opens down and to the
+right, flips to the other side when that is where the room is, and sits
+against the window edge only as a last resort. It is keyboard-navigable
+(arrows, `Home`/`End`, `Enter`, `Escape`) because every other way through
+the app is, and an irreversible item arms on the first press and runs on
+the second.
+
 ------------------------------------------------------------------------
 
 ## 5. Tabs
