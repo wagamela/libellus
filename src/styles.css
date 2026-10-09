@@ -397,17 +397,20 @@
 .cm-editor .cm-code-tag:empty {
   display: none;
 }
-.cm-editor .cm-code-copy {
+.cm-editor .cm-code-copy,
+.cm-editor .cm-code-format {
   font-size: 10px;
   line-height: 1.4;
   padding: 1px 5px;
   border-radius: var(--radius-sm);
   color: var(--color-muted);
 }
-.cm-editor .cm-code-copy:hover {
+.cm-editor .cm-code-copy:hover,
+.cm-editor .cm-code-format:hover {
   color: var(--color-text);
   background: var(--color-tab-hover);
 }
-.cm-editor .cm-code-copy:active {
+.cm-editor .cm-code-copy:active,
+.cm-editor .cm-code-format:active {
   background: var(--color-pressed);
 }

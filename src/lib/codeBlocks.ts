@@ -16,6 +16,7 @@ import {
 } from "@codemirror/state";
 import type { Language } from "./types";
 import { detectCodeLanguage } from "./detect";
+import { jsonFormatter } from "./formatters/json";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -321,7 +322,8 @@ class HeaderWidget extends WidgetType {
  */
 class ToolsWidget extends WidgetType {
   /** @param language  The language recognised in the block, or "" for none. */
-  constructor(readonly language: string) {
+  /** @param content   The code content of the block. */
+  constructor(readonly language: string, readonly content: string) {
     super();
   }
 
@@ -329,7 +331,7 @@ class ToolsWidget extends WidgetType {
    *  the code rebuilds this only when the answer actually changes — which keeps
    *  the copy control's own "copied" state from being swept away mid-flash. */
   eq(other: ToolsWidget): boolean {
-    return other.language === this.language;
+    return other.language === this.language && other.content === this.content;
   }
 
   toDOM(view: EditorView): HTMLElement {
@@ -342,6 +344,35 @@ class ToolsWidget extends WidgetType {
     tag.className = "cm-code-tag";
     tag.textContent = this.language;
     wrap.appendChild(tag);
+
+    // Format JSON button — only show if JSON is valid and not already formatted.
+    const isJSON = this.language === "json" || jsonFormatter.canFormat(this.content);
+    if (isJSON && jsonFormatter.canFormat(this.content) && !jsonFormatter.isFormatted(this.content)) {
+      const formatButton = document.createElement("button");
+      formatButton.className = "cm-code-format";
+      formatButton.textContent = "format";
+      formatButton.tabIndex = -1;
+      formatButton.contentEditable = "false";
+      formatButton.setAttribute("aria-label", "format json");
+      formatButton.addEventListener("mousedown", (event) => {
+        // The caret must not jump to the fence: this is chrome, not text.
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(formatButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const formatted = jsonFormatter.format(code);
+        view.dispatch({
+          changes: { from: block.bodyFrom, to: block.bodyTo, insert: formatted },
+          userEvent: "input",
+        });
+        formatButton.textContent = "formatted";
+        const revert = setTimeout(() => {
+          formatButton.textContent = "format";
+        }, 1100);
+        formatButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      wrap.appendChild(formatButton);
+    }
 
     const button = document.createElement("button");
     button.className = "cm-code-copy";
@@ -406,10 +437,10 @@ function build(state: EditorState): DecorationSet {
     // What the code was recognised as — the same answer `codeHighlight.ts`
     // colours the block with, so the label can never disagree with what is on
     // screen beneath it.
-    const language =
-      detectCodeLanguage(state.doc.sliceString(block.bodyFrom, block.bodyTo)) ?? "";
+    const content = state.doc.sliceString(block.bodyFrom, block.bodyTo);
+    const language = detectCodeLanguage(content) ?? "";
     ranges.push(
-      Decoration.widget({ widget: new ToolsWidget(language), side: 1 }).range(openLine.to),
+      Decoration.widget({ widget: new ToolsWidget(language, content), side: 1 }).range(openLine.to),
     );
     if (block.closed) {
       const closeLine = state.doc.line(block.endLine);
