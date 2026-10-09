@@ -23,6 +23,7 @@ import { jsonSorter } from "./formatters/sort";
 import { jsonDeduplicator } from "./formatters/dedupe";
 import { jsonToTypeScript } from "./formatters/to-ts";
 import { jsonToYAML } from "./formatters/to-yaml";
+import { jsonToCSV } from "./formatters/to-csv";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -535,14 +536,26 @@ class ToolsWidget extends WidgetType {
       toXmlButton.disabled = true;
       utilsContainer.appendChild(toXmlButton);
 
-      // JSON → CSV button (placeholder)
+      // JSON → CSV button
       const toCsvButton = document.createElement("button");
       toCsvButton.className = "cm-code-util";
       toCsvButton.textContent = "→csv";
       toCsvButton.tabIndex = -1;
       toCsvButton.contentEditable = "false";
       toCsvButton.setAttribute("aria-label", "convert json to csv");
-      toCsvButton.disabled = true;
+      toCsvButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(toCsvButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const csv = jsonToCSV.convert(code);
+        navigator.clipboard.writeText(csv);
+        toCsvButton.textContent = "copied";
+        const revert = setTimeout(() => {
+          toCsvButton.textContent = "→csv";
+        }, 1100);
+        toCsvButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
       utilsContainer.appendChild(toCsvButton);
 
       wrap.appendChild(utilsContainer);
