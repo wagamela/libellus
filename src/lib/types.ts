@@ -11,6 +11,9 @@ export type Language =
   | "cpp"
   | "csharp"
   | "sql"
+  | "yaml"
+  | "csv"
+  | "xml"
   | "text";
 
 export interface Doc {
@@ -51,6 +54,9 @@ export const LANGUAGES: Language[] = [
   "cpp",
   "csharp",
   "sql",
+  "yaml",
+  "csv",
+  "xml",
   "text",
 ];
 
@@ -70,5 +76,8 @@ export const LANGUAGE_EXTENSION: Record<Language, string> = {
   cpp: "cpp",
   csharp: "cs",
   sql: "sql",
+  yaml: "yaml",
+  csv: "csv",
+  xml: "xml",
   text: "txt",
 };

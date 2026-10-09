@@ -151,6 +151,29 @@ const SQL: Signal[] = [
   { re: /\bwhere\b/i, weight: 2 },
 ];
 
+const YAML: Signal[] = [
+  { re: /^---/, weight: 8 },
+  { re: /^[A-Za-z_][\w-]*:\s*(?:[^\s]|$)/m, weight: 5 },
+  { re: /^[ \t]+[-*]\s+\S/m, weight: 4 },
+  { re: /:\s*(?:\[|{|"[^"]*"|'[^']*'|\d+|true|false|null|~)(?:\s|$)/m, weight: 3 },
+  { re: /^[ \t]{2,}[A-Za-z_][\w-]*:/m, weight: 3 },
+];
+
+const CSV: Signal[] = [
+  { re: /^[^,\n]*,"[^"]*"[^,\n]*(?:,[^,\n]*,"[^"]*"[^,\n]*)*$/, weight: 6 },
+  { re: /^[A-Za-z_][\w]*(?:,[A-Za-z_][\w]*)+$/m, weight: 4 },
+  { re: /^[^,\n]+,[^,\n]+(?:\r?\n[^,\n]+,[^,\n]+)*\s*$/, weight: 3 },
+  { re: /,"/, weight: 2 },
+];
+
+const XML: Signal[] = [
+  { re: /^<\?xml\b/i, weight: 8 },
+  { re: /<!DOCTYPE\s+\w+/i, weight: 7 },
+  { re: /<\/(?:[A-Za-z_:][\w:.-]*)\s*>/, weight: 7 },
+  { re: /<([A-Za-z_:][\w:.-]*)(?:\s+[A-Za-z_:][\w:.-]*\s*=\s*(?:"[^"]*"|'[^']*'))*\s*\/?>/, weight: 5 },
+  { re: /&(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);/, weight: 3 },
+];
+
 /**
  * HTML is the one language here made of markup rather than statements, and a
  * closing tag is something nothing else in this set can produce. The weight
@@ -223,6 +246,20 @@ const AGAINST: Partial<Record<DetectedLanguage, Signal[]>> = {
     { re: /\bclassName\s*=|=>|\b(?:const|let|var|function|def|fn|import|export|return)\b/, weight: 9 },
     { re: /\{\{[^}\n]*\}\}|\{%[^}\n]*%\}|<\?php|\{\s*[A-Za-z_$][\w$.]*\s*\}/, weight: 4 },
   ],
+  yaml: [
+    { re: /=>|;\s*$/m, weight: 6 },
+    { re: /\b(?:function|const|let|var|def|fn|class|import|export)\b/, weight: 6 },
+    { re: /[{}\[\]]\s*[,;]/, weight: 4 },
+  ],
+  csv: [
+    { re: /\b(?:const|let|var|function|def|fn|class|if|else|for|while)\b/, weight: 8 },
+    { re: /=>|\/\/|\/\*|;\s*$/m, weight: 6 },
+    { re: /[{}\[\]()]/, weight: 4 },
+  ],
+  xml: [
+    { re: /\b(?:const|let|var|function|def|fn|class|import|export|return)\b/, weight: 8 },
+    { re: /=>|\/\/|\b(?:if|for|while|function)\s/, weight: 6 },
+  ],
 };
 
 function score(code: string, signals: Signal[]): number {
@@ -268,6 +305,9 @@ function detect(code: string): DetectedLanguage | null {
     sql: score(body, SQL),
     html: score(body, HTML),
     json: score(body, JSON_SIGNALS),
+    yaml: score(body, YAML),
+    csv: score(body, CSV),
+    xml: score(body, XML),
   };
   for (const [language, signals] of Object.entries(AGAINST)) {
     const key = language as DetectedLanguage;

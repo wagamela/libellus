@@ -133,6 +133,10 @@ export async function loadLanguage(language: Language): Promise<Extension> {
       return new LanguageSupport(await csharpLanguage());
     case "sql":
       return (await import("@codemirror/lang-sql")).sql();
+    case "yaml":
+      return (await import("@codemirror/lang-yaml")).yaml();
+    case "xml":
+    case "csv":
     case "text":
     default:
       return [];
@@ -184,6 +188,10 @@ export async function loadParser(language: Language): Promise<Parser | null> {
       return (await csharpLanguage()).parser;
     case "sql":
       return (await import("@codemirror/lang-sql")).StandardSQL.language.parser;
+    case "yaml":
+      return (await import("@codemirror/lang-yaml")).yamlLanguage.parser;
+    case "xml":
+    case "csv":
     default:
       return null;
   }
