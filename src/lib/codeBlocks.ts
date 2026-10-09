@@ -18,6 +18,7 @@ import type { Language } from "./types";
 import { detectCodeLanguage } from "./detect";
 import { jsonFormatter } from "./formatters/json";
 import { jsonMinifier } from "./formatters/minify";
+import { jsonValidator } from "./formatters/validate";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -402,14 +403,28 @@ class ToolsWidget extends WidgetType {
       });
       utilsContainer.appendChild(minifyButton);
 
-      // Validate button (placeholder)
+      // Validate button
       const validateButton = document.createElement("button");
       validateButton.className = "cm-code-util";
       validateButton.textContent = "validate";
       validateButton.tabIndex = -1;
       validateButton.contentEditable = "false";
       validateButton.setAttribute("aria-label", "validate json");
-      validateButton.disabled = true;
+      validateButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(validateButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const error = jsonValidator.getError(code);
+        const isValid = error === null;
+        validateButton.textContent = isValid ? "valid" : "invalid";
+        validateButton.setAttribute("data-valid", isValid ? "true" : "false");
+        const revert = setTimeout(() => {
+          validateButton.textContent = "validate";
+          validateButton.removeAttribute("data-valid");
+        }, 1100);
+        validateButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
       utilsContainer.appendChild(validateButton);
 
       // Sort keys button (placeholder)

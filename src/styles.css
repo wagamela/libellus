@@ -426,3 +426,9 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+.cm-editor .cm-code-util[data-valid="true"] {
+  color: var(--color-text);
+}
+.cm-editor .cm-code-util[data-valid="false"] {
+  color: var(--color-muted);
+}
