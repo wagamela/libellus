@@ -24,6 +24,7 @@ import { jsonDeduplicator } from "./formatters/dedupe";
 import { jsonToTypeScript } from "./formatters/to-ts";
 import { jsonToYAML } from "./formatters/to-yaml";
 import { jsonToCSV } from "./formatters/to-csv";
+import { jsonToXML } from "./formatters/to-xml";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -526,14 +527,26 @@ class ToolsWidget extends WidgetType {
       });
       utilsContainer.appendChild(toYamlButton);
 
-      // JSON → XML button (placeholder)
+      // JSON → XML button
       const toXmlButton = document.createElement("button");
       toXmlButton.className = "cm-code-util";
       toXmlButton.textContent = "→xml";
       toXmlButton.tabIndex = -1;
       toXmlButton.contentEditable = "false";
       toXmlButton.setAttribute("aria-label", "convert json to xml");
-      toXmlButton.disabled = true;
+      toXmlButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(toXmlButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const xml = jsonToXML.convert(code);
+        navigator.clipboard.writeText(xml);
+        toXmlButton.textContent = "copied";
+        const revert = setTimeout(() => {
+          toXmlButton.textContent = "→xml";
+        }, 1100);
+        toXmlButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
       utilsContainer.appendChild(toXmlButton);
 
       // JSON → CSV button
