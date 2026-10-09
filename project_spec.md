@@ -258,29 +258,74 @@ The application should clearly separate normal notes/snippets from sensitive sec
 
 Libellus should contain a collection of small, frequently useful developer utilities.
 
-Initial candidates include:
+### Data Format Utilities
 
-### JSON
+#### JSON
 
 - Format / prettify
 - Minify
 - Validate
+- Sort keys
+- Remove duplicates
 - JSON → TypeScript
-- JSON → other supported representations where useful
+- JSON → YAML
+- JSON → XML
+- JSON → CSV
+- Diff/compare JSON
 
-### Encoding
+#### YAML
+
+- Format / prettify
+- Minify
+- Validate
+- YAML → JSON
+- YAML → XML
+- YAML → CSV
+- Merge YAML files
+
+#### XML
+
+- Format / prettify
+- Minify
+- Validate
+- XML → JSON
+- XML → YAML
+- XML → CSV
+- XPath query/selection
+- Pretty-print with indentation
+
+#### ENV
+
+- Format / prettify
+- Validate
+- Parse and view as key-value pairs
+- ENV → JSON
+- Check for duplicates
+- Export/convert to JSON
+- Environment variable linter
+
+#### CSV
+
+- Format / prettify
+- Validate
+- CSV → JSON
+- CSV → YAML
+- CSV → XML
+- Sort by column
+- Filter/select columns
+- Table preview/viewer
+- Column analysis (data types, unique values)
+
+### Encoding & Identifiers
 
 - Base64 encode/decode
 - URL encode/decode
-
-### Identifiers
-
 - UUID generation
 - Timestamp generation/conversion
 
 ### Web/API
 
-- JWT inspection
+- JWT inspection/decoding
 - HTTP-related utilities where appropriate
 
 ### Text
@@ -289,7 +334,9 @@ Initial candidates include:
 - Text transformation
 - Character/line statistics
 
-The initial implementation should prioritize a small number of high-value tools rather than attempting to provide every developer utility.
+### Implementation Notes
+
+The initial implementation should prioritize high-value tools rather than attempting to provide every utility. Format/validate operations and bidirectional conversions between common formats are core utilities. Tools should integrate seamlessly with the note and snippet systems, allowing developers to work with structured data without leaving Libellus.
 
 ---
 
