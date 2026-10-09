@@ -17,6 +17,7 @@ import {
 import type { Language } from "./types";
 import { detectCodeLanguage } from "./detect";
 import { jsonFormatter } from "./formatters/json";
+import { jsonMinifier } from "./formatters/minify";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -372,6 +373,34 @@ class ToolsWidget extends WidgetType {
         formatButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
       });
       wrap.appendChild(formatButton);
+    }
+
+    // Minify JSON button — only show if JSON is valid and not already minified.
+    if (isJSON && jsonMinifier.canFormat(this.content) && !jsonMinifier.isFormatted(this.content)) {
+      const minifyButton = document.createElement("button");
+      minifyButton.className = "cm-code-minify";
+      minifyButton.textContent = "minify";
+      minifyButton.tabIndex = -1;
+      minifyButton.contentEditable = "false";
+      minifyButton.setAttribute("aria-label", "minify json");
+      minifyButton.addEventListener("mousedown", (event) => {
+        // The caret must not jump to the fence: this is chrome, not text.
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(minifyButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const minified = jsonMinifier.format(code);
+        view.dispatch({
+          changes: { from: block.bodyFrom, to: block.bodyTo, insert: minified },
+          userEvent: "input",
+        });
+        minifyButton.textContent = "minified";
+        const revert = setTimeout(() => {
+          minifyButton.textContent = "minify";
+        }, 1100);
+        minifyButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      wrap.appendChild(minifyButton);
     }
 
     const button = document.createElement("button");
