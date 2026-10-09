@@ -21,6 +21,7 @@ import { jsonMinifier } from "./formatters/minify";
 import { jsonValidator } from "./formatters/validate";
 import { jsonSorter } from "./formatters/sort";
 import { jsonDeduplicator } from "./formatters/dedupe";
+import { jsonToTypeScript } from "./formatters/to-ts";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -479,14 +480,26 @@ class ToolsWidget extends WidgetType {
       });
       utilsContainer.appendChild(dedupeButton);
 
-      // JSON → TypeScript button (placeholder)
+      // JSON → TypeScript button
       const toTsButton = document.createElement("button");
       toTsButton.className = "cm-code-util";
       toTsButton.textContent = "→ts";
       toTsButton.tabIndex = -1;
       toTsButton.contentEditable = "false";
       toTsButton.setAttribute("aria-label", "convert json to typescript");
-      toTsButton.disabled = true;
+      toTsButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(toTsButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const ts = jsonToTypeScript.convert(code);
+        navigator.clipboard.writeText(ts);
+        toTsButton.textContent = "copied";
+        const revert = setTimeout(() => {
+          toTsButton.textContent = "→ts";
+        }, 1100);
+        toTsButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
       utilsContainer.appendChild(toTsButton);
 
       // JSON → YAML button (placeholder)
