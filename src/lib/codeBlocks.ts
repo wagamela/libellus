@@ -19,6 +19,7 @@ import { detectCodeLanguage } from "./detect";
 import { jsonFormatter } from "./formatters/json";
 import { jsonMinifier } from "./formatters/minify";
 import { jsonValidator } from "./formatters/validate";
+import { jsonSorter } from "./formatters/sort";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -427,14 +428,29 @@ class ToolsWidget extends WidgetType {
       });
       utilsContainer.appendChild(validateButton);
 
-      // Sort keys button (placeholder)
+      // Sort keys button
       const sortButton = document.createElement("button");
       sortButton.className = "cm-code-util";
       sortButton.textContent = "sort";
       sortButton.tabIndex = -1;
       sortButton.contentEditable = "false";
       sortButton.setAttribute("aria-label", "sort json keys");
-      sortButton.disabled = true;
+      sortButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(sortButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const sorted = jsonSorter.format(code);
+        view.dispatch({
+          changes: { from: block.bodyFrom, to: block.bodyTo, insert: sorted },
+          userEvent: "input",
+        });
+        sortButton.textContent = "sorted";
+        const revert = setTimeout(() => {
+          sortButton.textContent = "sort";
+        }, 1100);
+        sortButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
       utilsContainer.appendChild(sortButton);
 
       // Remove duplicates button (placeholder)
