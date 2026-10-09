@@ -20,6 +20,7 @@ import { jsonFormatter } from "./formatters/json";
 import { jsonMinifier } from "./formatters/minify";
 import { jsonValidator } from "./formatters/validate";
 import { jsonSorter } from "./formatters/sort";
+import { jsonDeduplicator } from "./formatters/dedupe";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -453,14 +454,29 @@ class ToolsWidget extends WidgetType {
       });
       utilsContainer.appendChild(sortButton);
 
-      // Remove duplicates button (placeholder)
+      // Remove duplicates button
       const dedupeButton = document.createElement("button");
       dedupeButton.className = "cm-code-util";
       dedupeButton.textContent = "dedupe";
       dedupeButton.tabIndex = -1;
       dedupeButton.contentEditable = "false";
       dedupeButton.setAttribute("aria-label", "remove json duplicates");
-      dedupeButton.disabled = true;
+      dedupeButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(dedupeButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const deduped = jsonDeduplicator.format(code);
+        view.dispatch({
+          changes: { from: block.bodyFrom, to: block.bodyTo, insert: deduped },
+          userEvent: "input",
+        });
+        dedupeButton.textContent = "deduped";
+        const revert = setTimeout(() => {
+          dedupeButton.textContent = "dedupe";
+        }, 1100);
+        dedupeButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
       utilsContainer.appendChild(dedupeButton);
 
       // JSON → TypeScript button (placeholder)
