@@ -22,6 +22,7 @@ import { jsonValidator } from "./formatters/validate";
 import { jsonSorter } from "./formatters/sort";
 import { jsonDeduplicator } from "./formatters/dedupe";
 import { jsonToTypeScript } from "./formatters/to-ts";
+import { jsonToYAML } from "./formatters/to-yaml";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -502,14 +503,26 @@ class ToolsWidget extends WidgetType {
       });
       utilsContainer.appendChild(toTsButton);
 
-      // JSON → YAML button (placeholder)
+      // JSON → YAML button
       const toYamlButton = document.createElement("button");
       toYamlButton.className = "cm-code-util";
       toYamlButton.textContent = "→yaml";
       toYamlButton.tabIndex = -1;
       toYamlButton.contentEditable = "false";
       toYamlButton.setAttribute("aria-label", "convert json to yaml");
-      toYamlButton.disabled = true;
+      toYamlButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(toYamlButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const yaml = jsonToYAML.convert(code);
+        navigator.clipboard.writeText(yaml);
+        toYamlButton.textContent = "copied";
+        const revert = setTimeout(() => {
+          toYamlButton.textContent = "→yaml";
+        }, 1100);
+        toYamlButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
       utilsContainer.appendChild(toYamlButton);
 
       // JSON → XML button (placeholder)
