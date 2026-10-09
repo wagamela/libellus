@@ -191,10 +191,52 @@ export async function loadParser(language: Language): Promise<Parser | null> {
     case "yaml":
       return (await import("@codemirror/lang-yaml")).yamlLanguage.parser;
     case "xml":
+      return (await xmlParser());
     case "csv":
+      return (await csvParser());
     default:
       return null;
   }
+}
+
+/** Simple XML stream parser for snippet highlighting. */
+async function xmlParser(): Promise<Parser | null> {
+  const { StreamLanguage } = await import("@codemirror/language");
+  const { xml } = await import("@codemirror/legacy-modes/mode/xml");
+  return StreamLanguage.define(xml).parser;
+}
+
+/** Simple CSV stream parser for snippet highlighting. */
+async function csvParser(): Promise<Parser | null> {
+  const { StreamLanguage } = await import("@codemirror/language");
+
+  // Minimal CSV tokenizer: highlights quoted fields and numbers.
+  const csvMode = {
+    startState: () => ({ inQuote: false }),
+    token: (stream: any, state: any) => {
+      if (state.inQuote) {
+        stream.skipUntil('"');
+        if (stream.eat('"')) {
+          state.inQuote = false;
+        } else {
+          stream.skipToEnd();
+        }
+        return "string";
+      }
+      if (stream.eat('"')) {
+        state.inQuote = true;
+        return "string";
+      }
+      if (/\d/.test(stream.peek() || "")) {
+        stream.eatWhile(/\d/);
+        return "number";
+      }
+      stream.eatWhile(/[^",\n]/);
+      return null;
+    },
+  };
+
+  return StreamLanguage.define(csvMode).parser;
 }
 
 /**
