@@ -346,61 +346,137 @@ class ToolsWidget extends WidgetType {
     tag.textContent = this.language;
     wrap.appendChild(tag);
 
-    // Format JSON button — only show if JSON is valid and not already formatted.
+    // JSON utilities container — show all JSON tools when JSON is valid.
     const isJSON = this.language === "json" || jsonFormatter.canFormat(this.content);
-    if (isJSON && jsonFormatter.canFormat(this.content) && !jsonFormatter.isFormatted(this.content)) {
-      const formatButton = document.createElement("button");
-      formatButton.className = "cm-code-format";
-      formatButton.textContent = "format";
-      formatButton.tabIndex = -1;
-      formatButton.contentEditable = "false";
-      formatButton.setAttribute("aria-label", "format json");
-      formatButton.addEventListener("mousedown", (event) => {
-        // The caret must not jump to the fence: this is chrome, not text.
-        event.preventDefault();
-        const block = blockAt(view.state, view.posAtDOM(formatButton));
-        if (!block) return;
-        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
-        const formatted = jsonFormatter.format(code);
-        view.dispatch({
-          changes: { from: block.bodyFrom, to: block.bodyTo, insert: formatted },
-          userEvent: "input",
-        });
-        formatButton.textContent = "formatted";
-        const revert = setTimeout(() => {
-          formatButton.textContent = "format";
-        }, 1100);
-        formatButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
-      });
-      wrap.appendChild(formatButton);
-    }
+    if (isJSON && jsonFormatter.canFormat(this.content)) {
+      const utilsContainer = document.createElement("span");
+      utilsContainer.className = "cm-code-utils";
 
-    // Minify JSON button — only show if JSON is valid and not already minified.
-    if (isJSON && jsonMinifier.canFormat(this.content) && !jsonMinifier.isFormatted(this.content)) {
-      const minifyButton = document.createElement("button");
-      minifyButton.className = "cm-code-minify";
-      minifyButton.textContent = "minify";
-      minifyButton.tabIndex = -1;
-      minifyButton.contentEditable = "false";
-      minifyButton.setAttribute("aria-label", "minify json");
-      minifyButton.addEventListener("mousedown", (event) => {
-        // The caret must not jump to the fence: this is chrome, not text.
-        event.preventDefault();
-        const block = blockAt(view.state, view.posAtDOM(minifyButton));
-        if (!block) return;
-        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
-        const minified = jsonMinifier.format(code);
-        view.dispatch({
-          changes: { from: block.bodyFrom, to: block.bodyTo, insert: minified },
-          userEvent: "input",
+      // Format button
+      if (!jsonFormatter.isFormatted(this.content)) {
+        const formatButton = document.createElement("button");
+        formatButton.className = "cm-code-util";
+        formatButton.textContent = "format";
+        formatButton.tabIndex = -1;
+        formatButton.contentEditable = "false";
+        formatButton.setAttribute("aria-label", "format json");
+        formatButton.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          const block = blockAt(view.state, view.posAtDOM(formatButton));
+          if (!block) return;
+          const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+          const formatted = jsonFormatter.format(code);
+          view.dispatch({
+            changes: { from: block.bodyFrom, to: block.bodyTo, insert: formatted },
+            userEvent: "input",
+          });
+          formatButton.textContent = "formatted";
+          const revert = setTimeout(() => {
+            formatButton.textContent = "format";
+          }, 1100);
+          formatButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
         });
-        minifyButton.textContent = "minified";
-        const revert = setTimeout(() => {
-          minifyButton.textContent = "minify";
-        }, 1100);
-        minifyButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
-      });
-      wrap.appendChild(minifyButton);
+        utilsContainer.appendChild(formatButton);
+      }
+
+      // Minify button
+      if (!jsonMinifier.isFormatted(this.content)) {
+        const minifyButton = document.createElement("button");
+        minifyButton.className = "cm-code-util";
+        minifyButton.textContent = "minify";
+        minifyButton.tabIndex = -1;
+        minifyButton.contentEditable = "false";
+        minifyButton.setAttribute("aria-label", "minify json");
+        minifyButton.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          const block = blockAt(view.state, view.posAtDOM(minifyButton));
+          if (!block) return;
+          const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+          const minified = jsonMinifier.format(code);
+          view.dispatch({
+            changes: { from: block.bodyFrom, to: block.bodyTo, insert: minified },
+            userEvent: "input",
+          });
+          minifyButton.textContent = "minified";
+          const revert = setTimeout(() => {
+            minifyButton.textContent = "minify";
+          }, 1100);
+          minifyButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+        });
+        utilsContainer.appendChild(minifyButton);
+      }
+
+      // Validate button (placeholder)
+      const validateButton = document.createElement("button");
+      validateButton.className = "cm-code-util";
+      validateButton.textContent = "validate";
+      validateButton.tabIndex = -1;
+      validateButton.contentEditable = "false";
+      validateButton.setAttribute("aria-label", "validate json");
+      validateButton.disabled = true;
+      utilsContainer.appendChild(validateButton);
+
+      // Sort keys button (placeholder)
+      const sortButton = document.createElement("button");
+      sortButton.className = "cm-code-util";
+      sortButton.textContent = "sort";
+      sortButton.tabIndex = -1;
+      sortButton.contentEditable = "false";
+      sortButton.setAttribute("aria-label", "sort json keys");
+      sortButton.disabled = true;
+      utilsContainer.appendChild(sortButton);
+
+      // Remove duplicates button (placeholder)
+      const dedupeButton = document.createElement("button");
+      dedupeButton.className = "cm-code-util";
+      dedupeButton.textContent = "dedupe";
+      dedupeButton.tabIndex = -1;
+      dedupeButton.contentEditable = "false";
+      dedupeButton.setAttribute("aria-label", "remove json duplicates");
+      dedupeButton.disabled = true;
+      utilsContainer.appendChild(dedupeButton);
+
+      // JSON → TypeScript button (placeholder)
+      const toTsButton = document.createElement("button");
+      toTsButton.className = "cm-code-util";
+      toTsButton.textContent = "→ts";
+      toTsButton.tabIndex = -1;
+      toTsButton.contentEditable = "false";
+      toTsButton.setAttribute("aria-label", "convert json to typescript");
+      toTsButton.disabled = true;
+      utilsContainer.appendChild(toTsButton);
+
+      // JSON → YAML button (placeholder)
+      const toYamlButton = document.createElement("button");
+      toYamlButton.className = "cm-code-util";
+      toYamlButton.textContent = "→yaml";
+      toYamlButton.tabIndex = -1;
+      toYamlButton.contentEditable = "false";
+      toYamlButton.setAttribute("aria-label", "convert json to yaml");
+      toYamlButton.disabled = true;
+      utilsContainer.appendChild(toYamlButton);
+
+      // JSON → XML button (placeholder)
+      const toXmlButton = document.createElement("button");
+      toXmlButton.className = "cm-code-util";
+      toXmlButton.textContent = "→xml";
+      toXmlButton.tabIndex = -1;
+      toXmlButton.contentEditable = "false";
+      toXmlButton.setAttribute("aria-label", "convert json to xml");
+      toXmlButton.disabled = true;
+      utilsContainer.appendChild(toXmlButton);
+
+      // JSON → CSV button (placeholder)
+      const toCsvButton = document.createElement("button");
+      toCsvButton.className = "cm-code-util";
+      toCsvButton.textContent = "→csv";
+      toCsvButton.tabIndex = -1;
+      toCsvButton.contentEditable = "false";
+      toCsvButton.setAttribute("aria-label", "convert json to csv");
+      toCsvButton.disabled = true;
+      utilsContainer.appendChild(toCsvButton);
+
+      wrap.appendChild(utilsContainer);
     }
 
     const button = document.createElement("button");

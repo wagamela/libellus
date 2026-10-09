@@ -397,8 +397,14 @@
 .cm-editor .cm-code-tag:empty {
   display: none;
 }
+.cm-editor .cm-code-utils {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
+}
 .cm-editor .cm-code-copy,
-.cm-editor .cm-code-format {
+.cm-editor .cm-code-format,
+.cm-editor .cm-code-util {
   font-size: 10px;
   line-height: 1.4;
   padding: 1px 5px;
@@ -406,11 +412,17 @@
   color: var(--color-muted);
 }
 .cm-editor .cm-code-copy:hover,
-.cm-editor .cm-code-format:hover {
+.cm-editor .cm-code-format:hover,
+.cm-editor .cm-code-util:hover:not(:disabled) {
   color: var(--color-text);
   background: var(--color-tab-hover);
 }
 .cm-editor .cm-code-copy:active,
-.cm-editor .cm-code-format:active {
+.cm-editor .cm-code-format:active,
+.cm-editor .cm-code-util:active:not(:disabled) {
   background: var(--color-pressed);
+}
+.cm-editor .cm-code-util:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
