@@ -352,59 +352,55 @@ class ToolsWidget extends WidgetType {
       const utilsContainer = document.createElement("span");
       utilsContainer.className = "cm-code-utils";
 
-      // Format button
-      if (!jsonFormatter.isFormatted(this.content)) {
-        const formatButton = document.createElement("button");
-        formatButton.className = "cm-code-util";
-        formatButton.textContent = "format";
-        formatButton.tabIndex = -1;
-        formatButton.contentEditable = "false";
-        formatButton.setAttribute("aria-label", "format json");
-        formatButton.addEventListener("mousedown", (event) => {
-          event.preventDefault();
-          const block = blockAt(view.state, view.posAtDOM(formatButton));
-          if (!block) return;
-          const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
-          const formatted = jsonFormatter.format(code);
-          view.dispatch({
-            changes: { from: block.bodyFrom, to: block.bodyTo, insert: formatted },
-            userEvent: "input",
-          });
-          formatButton.textContent = "formatted";
-          const revert = setTimeout(() => {
-            formatButton.textContent = "format";
-          }, 1100);
-          formatButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      // Format button — always available
+      const formatButton = document.createElement("button");
+      formatButton.className = "cm-code-util";
+      formatButton.textContent = "format";
+      formatButton.tabIndex = -1;
+      formatButton.contentEditable = "false";
+      formatButton.setAttribute("aria-label", "format json");
+      formatButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(formatButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const formatted = jsonFormatter.format(code);
+        view.dispatch({
+          changes: { from: block.bodyFrom, to: block.bodyTo, insert: formatted },
+          userEvent: "input",
         });
-        utilsContainer.appendChild(formatButton);
-      }
+        formatButton.textContent = "formatted";
+        const revert = setTimeout(() => {
+          formatButton.textContent = "format";
+        }, 1100);
+        formatButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(formatButton);
 
-      // Minify button
-      if (!jsonMinifier.isFormatted(this.content)) {
-        const minifyButton = document.createElement("button");
-        minifyButton.className = "cm-code-util";
-        minifyButton.textContent = "minify";
-        minifyButton.tabIndex = -1;
-        minifyButton.contentEditable = "false";
-        minifyButton.setAttribute("aria-label", "minify json");
-        minifyButton.addEventListener("mousedown", (event) => {
-          event.preventDefault();
-          const block = blockAt(view.state, view.posAtDOM(minifyButton));
-          if (!block) return;
-          const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
-          const minified = jsonMinifier.format(code);
-          view.dispatch({
-            changes: { from: block.bodyFrom, to: block.bodyTo, insert: minified },
-            userEvent: "input",
-          });
-          minifyButton.textContent = "minified";
-          const revert = setTimeout(() => {
-            minifyButton.textContent = "minify";
-          }, 1100);
-          minifyButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      // Minify button — always available
+      const minifyButton = document.createElement("button");
+      minifyButton.className = "cm-code-util";
+      minifyButton.textContent = "minify";
+      minifyButton.tabIndex = -1;
+      minifyButton.contentEditable = "false";
+      minifyButton.setAttribute("aria-label", "minify json");
+      minifyButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(minifyButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const minified = jsonMinifier.format(code);
+        view.dispatch({
+          changes: { from: block.bodyFrom, to: block.bodyTo, insert: minified },
+          userEvent: "input",
         });
-        utilsContainer.appendChild(minifyButton);
-      }
+        minifyButton.textContent = "minified";
+        const revert = setTimeout(() => {
+          minifyButton.textContent = "minify";
+        }, 1100);
+        minifyButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(minifyButton);
 
       // Validate button (placeholder)
       const validateButton = document.createElement("button");
