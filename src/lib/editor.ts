@@ -48,26 +48,26 @@ const TOKEN_STYLES: TokenStyle[] = [
   // Scaffolding: grey, so it reads as the frame the code hangs on rather than
   // as another kind of token.
   { tag: [t.comment, t.lineComment, t.blockComment, t.docComment], color: "#5d6878", fontStyle: "italic" },
-  { tag: [t.punctuation, t.bracket, t.separator, t.angleBracket], color: "#78859a" },
-  { tag: [t.operator, t.typeOperator, t.derefOperator, t.compareOperator, t.logicOperator, t.arithmeticOperator], color: "#95a2b5" },
+  { tag: [t.punctuation, t.bracket, t.separator, t.angleBracket], color: "#8a96ad" },
+  { tag: [t.operator, t.typeOperator, t.derefOperator, t.compareOperator, t.logicOperator, t.arithmeticOperator], color: "#a0abb5" },
   // The grammar's own words, and the things that mark up the code about them.
-  { tag: [t.keyword, t.controlKeyword, t.modifier, t.operatorKeyword, t.self], color: "#b08ad6" },
-  { tag: [t.definitionKeyword, t.moduleKeyword], color: "#bb97de", fontWeight: "500" },
-  { tag: [t.meta, t.annotation, t.processingInstruction], color: "#9a86b8" },
+  { tag: [t.keyword, t.controlKeyword, t.modifier, t.operatorKeyword, t.self], color: "#c89ce0" },
+  { tag: [t.definitionKeyword, t.moduleKeyword], color: "#d4a8e8", fontWeight: "500" },
+  { tag: [t.meta, t.annotation, t.processingInstruction], color: "#b59cc8" },
   // What the program carries: text, numbers, the names of things.
-  { tag: [t.string, t.special(t.string), t.character, t.attributeValue], color: "#94c48c" },
-  { tag: [t.regexp], color: "#8fc4a8" },
-  { tag: [t.escape, t.special(t.brace)], color: "#c9d49a" },
-  { tag: [t.number, t.integer, t.float, t.bool, t.null, t.atom, t.unit, t.constant(t.variableName)], color: "#d8a86a" },
-  { tag: [t.typeName, t.className, t.namespace, t.tagName], color: "#82c3d6" },
-  { tag: [t.propertyName, t.attributeName, t.labelName], color: "#9fc0cc" },
+  { tag: [t.string, t.special(t.string), t.character, t.attributeValue], color: "#a8d68c" },
+  { tag: [t.regexp], color: "#9ed4b5" },
+  { tag: [t.escape, t.special(t.brace)], color: "#d4e0a6" },
+  { tag: [t.number, t.integer, t.float, t.bool, t.null, t.atom, t.unit, t.constant(t.variableName)], color: "#e8b876" },
+  { tag: [t.typeName, t.className, t.namespace, t.tagName], color: "#96d5e8" },
+  { tag: [t.propertyName, t.attributeName, t.labelName], color: "#b3e0f0" },
   // The things that get called, and the things that get named.
-  { tag: [t.standard(t.variableName), t.macroName, t.special(t.variableName)], color: "#7fb0e4" },
-  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#8cb8ef" },
-  { tag: [t.definition(t.function(t.variableName)), t.definition(t.className)], color: "#a8ccfa", fontWeight: "600" },
+  { tag: [t.standard(t.variableName), t.macroName, t.special(t.variableName)], color: "#8fc4f0" },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#a0d0f8" },
+  { tag: [t.definition(t.function(t.variableName)), t.definition(t.className)], color: "#b8d8ff", fontWeight: "600" },
   { tag: [t.variableName, t.definition(t.propertyName)], color: "#e4ebf4" },
   { tag: [t.definition(t.variableName)], color: "#f4f8fc", fontWeight: "500" },
-  { tag: [t.invalid], color: "#d98f8f", textDecoration: "underline wavy" },
+  { tag: [t.invalid], color: "#e0a0a0", textDecoration: "underline wavy" },
   // Prose, which is not code: the achromatic rule still holds here. A detected
   // snippet is never markdown, so these only ever come from a note's own
   // grammar, outside any block.
