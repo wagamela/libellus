@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=libellus
+Exec=libellus
+Icon=libellus
+Categories=Utility;Development;
+Comment=A local-first developer workspace for notes, snippets and utilities
+Terminal=false
