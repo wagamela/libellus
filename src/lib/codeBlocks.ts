@@ -601,6 +601,9 @@ class ToolsWidget extends WidgetType {
   updateDOM(dom: HTMLElement): boolean {
     const tag = dom.firstElementChild;
     if (!tag) return false;
+    // If language changed, rebuild entirely (utilities may need to appear/disappear)
+    const oldLanguage = tag.textContent;
+    if (oldLanguage !== this.language) return false;
     tag.textContent = this.language;
     return true;
   }
