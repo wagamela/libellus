@@ -153,7 +153,14 @@ export default function App() {
   const selectAllInDoc = useCallback(() => {
     const view = activeEditor();
     if (!view) return;
-    view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
+    const block = blockAtCursor(view);
+    if (block) {
+      // Inside a code block: select only the code body, not the fences
+      view.dispatch({ selection: { anchor: block.bodyFrom, head: block.bodyTo } });
+    } else {
+      // Outside a code block: select entire document
+      view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
+    }
     focusEditor();
   }, [focusEditor]);
   const findInDoc = useCallback(() => {
@@ -193,6 +200,9 @@ export default function App() {
       } else if (key === "w") {
         event.preventDefault();
         closeActive();
+      } else if (key === "a") {
+        event.preventDefault();
+        selectAllInDoc();
       } else if ((key === "b" || key === "i" || key === "u") && !event.shiftKey && !event.altKey) {
         // Plain Ctrl, never with Shift: Ctrl Shift I is the browser's inspector
         // and `npm run dev` runs in a browser. Prevented either way, so the
@@ -218,7 +228,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, moveActiveTab, insertCode, emphasise, store]);
+  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, moveActiveTab, insertCode, emphasise, selectAllInDoc, store]);
 
   // Persist on the way out so an autosave in flight is never lost.
   useEffect(() => {
