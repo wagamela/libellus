@@ -353,9 +353,8 @@ class ToolsWidget extends WidgetType {
     tag.textContent = this.language;
     wrap.appendChild(tag);
 
-    // JSON utilities container — show all JSON tools when JSON is valid.
-    const isJSON = this.language === "json" || jsonFormatter.canFormat(this.content);
-    if (isJSON && jsonFormatter.canFormat(this.content)) {
+    // JSON utilities container — show tools when language is detected as JSON.
+    if (this.language === "json") {
       const utilsContainer = document.createElement("span");
       utilsContainer.className = "cm-code-utils";
 
