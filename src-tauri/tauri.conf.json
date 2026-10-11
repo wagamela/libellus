@@ -34,8 +34,10 @@
       "icons/icon.icns",
       "icons/icon.png"
     ],
-    "deb": {
-      "desktopTemplate": "libellus.desktop"
+    "linux": {
+      "deb": {
+        "desktopTemplate": "libellus.desktop"
+      }
     }
   }
 }
