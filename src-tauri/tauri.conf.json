@@ -19,7 +19,8 @@
         "minHeight": 420,
         "resizable": true,
         "theme": "Dark",
-        "backgroundColor": "#1a1f27"
+        "backgroundColor": "#1a1f27",
+        "icon": "icons/icon.png"
       }
     ],
     "security": {
@@ -29,6 +30,10 @@
   "bundle": {
     "active": true,
     "targets": ["nsis", "msi"],
-    "icon": ["icons/icon.ico"]
+    "icon": [
+      "icons/icon.ico",
+      "icons/icon.icns",
+      "icons/icon.png"
+    ]
   }
 }
