@@ -18,7 +18,15 @@
       "Bash(identify src-tauri/icons/icon.png)",
       "Bash(git show *)",
       "Read(//tmp/**)",
-      "Bash(file icons/icon.*)"
+      "Bash(file icons/icon.*)",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs kill -9)",
+      "Bash(curl -s http://localhost:1420)",
+      "Bash(node /tmp/test_json_utils.js)",
+      "Bash(npm install *)",
+      "Bash(npx playwright *)",
+      "Bash(pkill -9 \"npm run app\")",
+      "Bash(pkill -9 \"tauri dev\")"
     ]
   }
 }
