@@ -200,9 +200,6 @@ export default function App() {
       } else if (key === "w") {
         event.preventDefault();
         closeActive();
-      } else if (key === "a") {
-        event.preventDefault();
-        selectAllInDoc();
       } else if ((key === "b" || key === "i" || key === "u") && !event.shiftKey && !event.altKey) {
         // Plain Ctrl, never with Shift: Ctrl Shift I is the browser's inspector
         // and `npm run dev` runs in a browser. Prevented either way, so the
@@ -228,7 +225,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, moveActiveTab, insertCode, emphasise, selectAllInDoc, store]);
+  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, moveActiveTab, insertCode, emphasise, store]);
 
   // Persist on the way out so an autosave in flight is never lost.
   useEffect(() => {

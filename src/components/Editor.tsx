@@ -21,7 +21,7 @@ import { closeBrackets, closeBracketsKeymap, autocompletion } from "@codemirror/
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { loadLanguage, libellusTheme } from "../lib/editor";
 import { libellusImages } from "../lib/imageView";
-import { libellusCodeBlocks } from "../lib/codeBlocks";
+import { libellusCodeBlocks, blockAtCursor } from "../lib/codeBlocks";
 import { libellusCodeHighlight } from "../lib/codeHighlight";
 import { libellusEmphasis } from "../lib/emphasis";
 import type { Doc } from "../lib/types";
@@ -104,6 +104,19 @@ export function Editor({ doc, onChange, onSave, autoFocus = true }: EditorProps)
               preventDefault: true,
               run: () => {
                 onSaveRef.current();
+                return true;
+              },
+            },
+            {
+              key: "Mod-a",
+              preventDefault: true,
+              run: (view) => {
+                const block = blockAtCursor(view);
+                if (block) {
+                  view.dispatch({ selection: { anchor: block.bodyFrom, head: block.bodyTo } });
+                } else {
+                  view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
+                }
                 return true;
               },
             },
