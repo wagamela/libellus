@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import graphify; print\\('graphify found'\\)\")",
+      "Bash(pip install *)",
+      "Bash(python3 -m pip install graphifyy -q)",
+      "Bash(uv tool *)",
+      "Bash(echo /home/wagamela/.local/share/uv/tools/graphifyy/bin/python)",
+      "Bash(echo \"/home/wagamela/Projects/libellus\")",
+      "Bash($GRAPHIFY_PYTHON *)",
+      "Bash(cd *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git config *)",
+      "Bash(npm run *)",
+      "Bash(git push *)",
+      "Bash(file src-tauri/icons/icon.*)",
+      "Bash(identify src-tauri/icons/icon.png)",
+      "Bash(git show *)",
+      "Read(//tmp/**)",
+      "Bash(file icons/icon.*)"
+    ]
+  }
+}
