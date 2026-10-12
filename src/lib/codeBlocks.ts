@@ -782,6 +782,32 @@ class ToolsWidget extends WidgetType {
       wrap.appendChild(utilsContainer);
     }
 
+    const removeButton = document.createElement("button");
+    removeButton.className = "cm-code-remove";
+    removeButton.textContent = "✕";
+    removeButton.tabIndex = -1;
+    removeButton.contentEditable = "false";
+    removeButton.setAttribute("aria-label", "remove code block");
+    removeButton.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      const block = blockAt(view.state, view.posAtDOM(removeButton));
+      if (!block) return;
+      const startLine = view.state.doc.line(block.startLine);
+      const endLine = view.state.doc.line(block.endLine);
+      const start = startLine.from;
+      const end = block.closed ? endLine.to : endLine.to;
+      // Remove entire block including surrounding newline if present
+      let deleteEnd = end;
+      if (deleteEnd < view.state.doc.length && view.state.doc.sliceString(deleteEnd, deleteEnd + 1) === "\n") {
+        deleteEnd += 1;
+      }
+      view.dispatch({
+        changes: { from: start, to: deleteEnd },
+        userEvent: "input",
+      });
+    });
+    wrap.appendChild(removeButton);
+
     const button = document.createElement("button");
     button.className = "cm-code-copy";
     button.textContent = "copy";
