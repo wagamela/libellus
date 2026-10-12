@@ -782,32 +782,6 @@ class ToolsWidget extends WidgetType {
       wrap.appendChild(utilsContainer);
     }
 
-    const removeButton = document.createElement("button");
-    removeButton.className = "cm-code-remove";
-    removeButton.textContent = "✕";
-    removeButton.tabIndex = -1;
-    removeButton.contentEditable = "false";
-    removeButton.setAttribute("aria-label", "remove code block");
-    removeButton.addEventListener("mousedown", (event) => {
-      event.preventDefault();
-      const block = blockAt(view.state, view.posAtDOM(removeButton));
-      if (!block) return;
-      const startLine = view.state.doc.line(block.startLine);
-      const endLine = view.state.doc.line(block.endLine);
-      const start = startLine.from;
-      const end = block.closed ? endLine.to : endLine.to;
-      // Remove entire block including surrounding newline if present
-      let deleteEnd = end;
-      if (deleteEnd < view.state.doc.length && view.state.doc.sliceString(deleteEnd, deleteEnd + 1) === "\n") {
-        deleteEnd += 1;
-      }
-      view.dispatch({
-        changes: { from: start, to: deleteEnd },
-        userEvent: "input",
-      });
-    });
-    wrap.appendChild(removeButton);
-
     const button = document.createElement("button");
     button.className = "cm-code-copy";
     button.textContent = "copy";
@@ -830,6 +804,58 @@ class ToolsWidget extends WidgetType {
       }, 1100);
     });
     wrap.appendChild(button);
+
+    const removeButton = document.createElement("button");
+    removeButton.className = "cm-code-remove";
+    removeButton.tabIndex = -1;
+    removeButton.contentEditable = "false";
+    removeButton.setAttribute("aria-label", "remove code block");
+
+    // Create trash icon SVG
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 16 16");
+    svg.setAttribute("width", "14");
+    svg.setAttribute("height", "14");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.3");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+
+    const paths = [
+      { d: "M2.5 4h11" },
+      { d: "M6.5 2.4h3" },
+      { d: "M4.1 4l.5 9a1 1 0 0 0 1 .95h4.8a1 1 0 0 0 1-.95l.5-9" },
+      { d: "M6.6 6.6v4.7M9.4 6.6v4.7" },
+    ];
+
+    for (const pathData of paths) {
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", pathData.d);
+      svg.appendChild(path);
+    }
+
+    removeButton.appendChild(svg);
+    removeButton.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      const block = blockAt(view.state, view.posAtDOM(removeButton));
+      if (!block) return;
+      const startLine = view.state.doc.line(block.startLine);
+      const endLine = view.state.doc.line(block.endLine);
+      const start = startLine.from;
+      const end = block.closed ? endLine.to : endLine.to;
+      // Remove entire block including surrounding newline if present
+      let deleteEnd = end;
+      if (deleteEnd < view.state.doc.length && view.state.doc.sliceString(deleteEnd, deleteEnd + 1) === "\n") {
+        deleteEnd += 1;
+      }
+      view.dispatch({
+        changes: { from: start, to: deleteEnd },
+        userEvent: "input",
+      });
+    });
+    wrap.appendChild(removeButton);
     return wrap;
   }
 
