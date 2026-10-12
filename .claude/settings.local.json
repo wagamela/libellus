@@ -26,7 +26,12 @@
       "Bash(npm install *)",
       "Bash(npx playwright *)",
       "Bash(pkill -9 \"npm run app\")",
-      "Bash(pkill -9 \"tauri dev\")"
+      "Bash(pkill -9 \"tauri dev\")",
+      "Bash(node *)",
+      "Bash(echo \"Dev server PID: $!\")",
+      "Bash(cat)",
+      "Bash(python3 /tmp/test-yaml.py)",
+      "Bash(pkill -f \"npm run dev\")"
     ]
   }
 }

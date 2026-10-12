@@ -5,7 +5,7 @@ import {
   indentUnit,
   type StreamLanguage,
 } from "@codemirror/language";
-import { tags as t } from "@lezer/highlight";
+import { tags as t, styleTags } from "@lezer/highlight";
 import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import type { Tag } from "@lezer/highlight";
@@ -60,7 +60,8 @@ const TOKEN_STYLES: TokenStyle[] = [
   { tag: [t.escape, t.special(t.brace)], color: "#d4e0a6" },
   { tag: [t.number, t.integer, t.float, t.bool, t.null, t.atom, t.unit, t.constant(t.variableName)], color: "#e8b876" },
   { tag: [t.typeName, t.className, t.namespace, t.tagName], color: "#96d5e8" },
-  { tag: [t.propertyName, t.attributeName, t.labelName], color: "#b3e0f0" },
+  { tag: [t.propertyName, t.attributeName], color: "#a0d0f8" },
+  { tag: [t.labelName], color: "#b3e0f0" },
   // The things that get called, and the things that get named.
   { tag: [t.standard(t.variableName), t.macroName, t.special(t.variableName)], color: "#8fc4f0" },
   { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#a0d0f8" },
@@ -134,7 +135,7 @@ export async function loadLanguage(language: Language): Promise<Extension> {
     case "sql":
       return (await import("@codemirror/lang-sql")).sql();
     case "yaml":
-      return (await import("@codemirror/lang-yaml")).yaml();
+      return yamlLanguageWithHighlight();
     case "xml":
     case "csv":
     case "text":
@@ -156,6 +157,32 @@ async function csharpLanguage(): Promise<StreamLanguage<unknown>> {
     import("@codemirror/legacy-modes/mode/clike"),
   ]);
   return StreamLanguage.define(csharp);
+}
+
+/**
+ * YAML language with syntax highlighting tags. The base YAML grammar from
+ * @codemirror/lang-yaml doesn't define any style tags, so we add them here
+ * to enable proper syntax highlighting for keys, values, etc.
+ */
+async function yamlLanguageWithHighlight(): Promise<LanguageSupport> {
+  const { yamlLanguage: baseYamlLanguage } = await import("@codemirror/lang-yaml");
+
+  // Create YAML language with style tags
+  const yamlWithTags = baseYamlLanguage.configure({
+    props: [
+      styleTags({
+        "Literal QuotedLiteral": t.string,
+        "Key": t.propertyName,
+        "FlowMapping FlowSequence": t.punctuation,
+        "': Anchor Tag": t.punctuation,
+        "Comment": t.comment,
+        "Number": t.number,
+        "true false null": t.atom,
+      }),
+    ],
+  });
+
+  return new LanguageSupport(yamlWithTags);
 }
 
 /**
@@ -189,7 +216,7 @@ export async function loadParser(language: Language): Promise<Parser | null> {
     case "sql":
       return (await import("@codemirror/lang-sql")).StandardSQL.language.parser;
     case "yaml":
-      return (await import("@codemirror/lang-yaml")).yamlLanguage.parser;
+      return (await yamlParserWithHighlight());
     case "xml":
       return (await xmlParser());
     case "csv":
@@ -197,6 +224,29 @@ export async function loadParser(language: Language): Promise<Parser | null> {
     default:
       return null;
   }
+}
+
+/**
+ * YAML parser with syntax tags for snippet highlighting.
+ */
+async function yamlParserWithHighlight(): Promise<Parser | null> {
+  const { yamlLanguage: baseYamlLanguage } = await import("@codemirror/lang-yaml");
+
+  const yamlWithTags = baseYamlLanguage.configure({
+    props: [
+      styleTags({
+        "Literal QuotedLiteral": t.string,
+        "Key": t.propertyName,
+        "FlowMapping FlowSequence": t.punctuation,
+        "': Anchor Tag": t.punctuation,
+        "Comment": t.comment,
+        "Number": t.number,
+        "true false null": t.atom,
+      }),
+    ],
+  });
+
+  return yamlWithTags.parser;
 }
 
 /** Simple XML stream parser for snippet highlighting. */
