@@ -361,6 +361,12 @@ class ToolsWidget extends WidgetType {
     tag.textContent = this.language;
     wrap.appendChild(tag);
 
+    // Add separator between tag and utilities
+    const separator = document.createElement("span");
+    separator.className = "cm-code-separator";
+    separator.textContent = "|";
+    wrap.appendChild(separator);
+
     // JSON utilities container — show tools when language is detected as JSON.
     if (this.language === "json") {
       const utilsContainer = document.createElement("span");

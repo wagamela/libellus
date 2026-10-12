@@ -397,10 +397,16 @@
 .cm-editor .cm-code-tag:empty {
   display: none;
 }
+.cm-editor .cm-code-separator {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--color-accent-dim);
+  margin: 0 4px;
+  opacity: 0.5;
+}
 .cm-editor .cm-code-utils {
   display: inline-flex;
   gap: 2px;
-  margin-left: 4px;
 }
 .cm-editor .cm-code-copy,
 .cm-editor .cm-code-format,
