@@ -33,6 +33,11 @@ import { xmlToYAML } from "./formatters/xml-to-yaml";
 import { xmlToCSV } from "./formatters/xml-to-csv";
 import { xmlRemoveComments } from "./formatters/xml-remove-comments";
 import { xmlEscape } from "./formatters/xml-escape";
+import { yamlValidator } from "./formatters/yaml-validate";
+import { yamlMinifier } from "./formatters/yaml-minify";
+import { yamlToJSON } from "./formatters/yaml-to-json";
+import { yamlToCSV } from "./formatters/yaml-to-csv";
+import { yamlToXML } from "./formatters/yaml-to-xml";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -778,6 +783,150 @@ class ToolsWidget extends WidgetType {
         escapeButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
       });
       utilsContainer.appendChild(escapeButton);
+
+      wrap.appendChild(utilsContainer);
+    }
+
+    // YAML utilities container — show tools when language is detected as YAML.
+    if (this.language === "yaml") {
+      const utilsContainer = document.createElement("span");
+      utilsContainer.className = "cm-code-utils";
+
+      // Format button
+      const formatButton = document.createElement("button");
+      formatButton.className = "cm-code-util";
+      formatButton.textContent = "format";
+      formatButton.tabIndex = -1;
+      formatButton.contentEditable = "false";
+      formatButton.setAttribute("aria-label", "format yaml");
+      formatButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(formatButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        // YAML is already formatted, just return as-is
+        formatButton.textContent = "formatted";
+        const revert = setTimeout(() => {
+          formatButton.textContent = "format";
+        }, 1100);
+        formatButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(formatButton);
+
+      // Minify button
+      const minifyButton = document.createElement("button");
+      minifyButton.className = "cm-code-util";
+      minifyButton.textContent = "minify";
+      minifyButton.tabIndex = -1;
+      minifyButton.contentEditable = "false";
+      minifyButton.setAttribute("aria-label", "minify yaml");
+      minifyButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(minifyButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const minified = yamlMinifier.format(code);
+        view.dispatch({
+          changes: { from: block.bodyFrom, to: block.bodyTo, insert: minified },
+          userEvent: "input",
+        });
+        minifyButton.textContent = "minified";
+        const revert = setTimeout(() => {
+          minifyButton.textContent = "minify";
+        }, 1100);
+        minifyButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(minifyButton);
+
+      // Validate button
+      const validateButton = document.createElement("button");
+      validateButton.className = "cm-code-util";
+      validateButton.textContent = "validate";
+      validateButton.tabIndex = -1;
+      validateButton.contentEditable = "false";
+      validateButton.setAttribute("aria-label", "validate yaml");
+      validateButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(validateButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const error = yamlValidator.getError(code);
+        const isValid = error === null;
+        validateButton.textContent = isValid ? "valid" : "invalid";
+        validateButton.setAttribute("data-valid", isValid ? "true" : "false");
+        const revert = setTimeout(() => {
+          validateButton.textContent = "validate";
+          validateButton.removeAttribute("data-valid");
+        }, 1100);
+        validateButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(validateButton);
+
+      // YAML → JSON button
+      const toJsonButton = document.createElement("button");
+      toJsonButton.className = "cm-code-util";
+      toJsonButton.textContent = "→json";
+      toJsonButton.tabIndex = -1;
+      toJsonButton.contentEditable = "false";
+      toJsonButton.setAttribute("aria-label", "convert yaml to json");
+      toJsonButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(toJsonButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const json = yamlToJSON.convert(code);
+        navigator.clipboard.writeText(json);
+        toJsonButton.textContent = "copied";
+        const revert = setTimeout(() => {
+          toJsonButton.textContent = "→json";
+        }, 1100);
+        toJsonButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(toJsonButton);
+
+      // YAML → CSV button
+      const toCsvButton = document.createElement("button");
+      toCsvButton.className = "cm-code-util";
+      toCsvButton.textContent = "→csv";
+      toCsvButton.tabIndex = -1;
+      toCsvButton.contentEditable = "false";
+      toCsvButton.setAttribute("aria-label", "convert yaml to csv");
+      toCsvButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(toCsvButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const csv = yamlToCSV.convert(code);
+        navigator.clipboard.writeText(csv);
+        toCsvButton.textContent = "copied";
+        const revert = setTimeout(() => {
+          toCsvButton.textContent = "→csv";
+        }, 1100);
+        toCsvButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(toCsvButton);
+
+      // YAML → XML button
+      const toXmlButton = document.createElement("button");
+      toXmlButton.className = "cm-code-util";
+      toXmlButton.textContent = "→xml";
+      toXmlButton.tabIndex = -1;
+      toXmlButton.contentEditable = "false";
+      toXmlButton.setAttribute("aria-label", "convert yaml to xml");
+      toXmlButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(toXmlButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const xml = yamlToXML.convert(code);
+        navigator.clipboard.writeText(xml);
+        toXmlButton.textContent = "copied";
+        const revert = setTimeout(() => {
+          toXmlButton.textContent = "→xml";
+        }, 1100);
+        toXmlButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(toXmlButton);
 
       wrap.appendChild(utilsContainer);
     }
