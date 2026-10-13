@@ -3,7 +3,8 @@ export class YAMLToXML {
     try {
       const obj = this.parseYAML(content);
       const rootKey = this.findRootKey(obj);
-      const xml = this.toXML(rootKey, obj[rootKey as keyof typeof obj], 0);
+      const value = (obj as Record<string, unknown>)[rootKey];
+      const xml = this.toXML(rootKey, value, 0);
       return `<?xml version="1.0" encoding="UTF-8"?>\n${xml}`;
     } catch {
       return content;
@@ -115,7 +116,6 @@ export class YAMLToXML {
 
   private toXML(key: string, value: unknown, indent: number): string {
     const spaces = "  ".repeat(indent);
-    const nextSpaces = "  ".repeat(indent + 1);
 
     const safeKey = this.sanitizeTag(key);
 

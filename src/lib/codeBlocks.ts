@@ -803,8 +803,7 @@ class ToolsWidget extends WidgetType {
         event.preventDefault();
         const block = blockAt(view.state, view.posAtDOM(formatButton));
         if (!block) return;
-        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
-        // YAML is already formatted, just return as-is
+        // YAML is already formatted, just show feedback
         formatButton.textContent = "formatted";
         const revert = setTimeout(() => {
           formatButton.textContent = "format";
