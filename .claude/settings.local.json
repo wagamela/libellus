@@ -31,7 +31,14 @@
       "Bash(echo \"Dev server PID: $!\")",
       "Bash(cat)",
       "Bash(python3 /tmp/test-yaml.py)",
-      "Bash(pkill -f \"npm run dev\")"
+      "Bash(pkill -f \"npm run dev\")",
+      "Bash(grep -E \"\\\\.\\(desktop|py|rs\\)$\")",
+      "Bash(identify ./src-tauri/target/release/bundle/appimage/libellus.AppDir/libellus.png)",
+      "Bash(libellus --version)",
+      "Bash(xargs ls -lh)",
+      "Bash(identify -verbose src-tauri/icons/icon.png src-tauri/icons/libellus.png)",
+      "Bash(identify -)",
+      "Bash(git hash-object *)"
     ]
   }
 }
