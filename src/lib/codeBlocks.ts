@@ -38,6 +38,12 @@ import { yamlMinifier } from "./formatters/yaml-minify";
 import { yamlToJSON } from "./formatters/yaml-to-json";
 import { yamlToCSV } from "./formatters/yaml-to-csv";
 import { yamlToXML } from "./formatters/yaml-to-xml";
+import { csvFormatter } from "./formatters/csv";
+import { csvValidator } from "./formatters/csv-validate";
+import { csvToJSON } from "./formatters/csv-to-json";
+import { csvToYAML } from "./formatters/csv-to-yaml";
+import { csvToXML } from "./formatters/csv-to-xml";
+import { csvAnalyzer } from "./formatters/csv-analyzer";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -926,6 +932,152 @@ class ToolsWidget extends WidgetType {
         toXmlButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
       });
       utilsContainer.appendChild(toXmlButton);
+
+      wrap.appendChild(utilsContainer);
+    }
+
+    // CSV utilities container — show tools when language is detected as CSV.
+    if (this.language === "csv") {
+      const utilsContainer = document.createElement("span");
+      utilsContainer.className = "cm-code-utils";
+
+      // Format button
+      const formatButton = document.createElement("button");
+      formatButton.className = "cm-code-util";
+      formatButton.textContent = "format";
+      formatButton.tabIndex = -1;
+      formatButton.contentEditable = "false";
+      formatButton.setAttribute("aria-label", "format csv");
+      formatButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(formatButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const formatted = csvFormatter.format(code);
+        view.dispatch({
+          changes: { from: block.bodyFrom, to: block.bodyTo, insert: formatted },
+          userEvent: "input",
+        });
+        formatButton.textContent = "formatted";
+        const revert = setTimeout(() => {
+          formatButton.textContent = "format";
+        }, 1100);
+        formatButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(formatButton);
+
+      // Validate button
+      const validateButton = document.createElement("button");
+      validateButton.className = "cm-code-util";
+      validateButton.textContent = "validate";
+      validateButton.tabIndex = -1;
+      validateButton.contentEditable = "false";
+      validateButton.setAttribute("aria-label", "validate csv");
+      validateButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(validateButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const error = csvValidator.validate(code);
+        const isValid = error === null;
+        validateButton.textContent = isValid ? "valid" : "invalid";
+        validateButton.setAttribute("data-valid", isValid ? "true" : "false");
+        const revert = setTimeout(() => {
+          validateButton.textContent = "validate";
+          validateButton.removeAttribute("data-valid");
+        }, 1100);
+        validateButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(validateButton);
+
+      // CSV → JSON button
+      const toJsonButton = document.createElement("button");
+      toJsonButton.className = "cm-code-util";
+      toJsonButton.textContent = "→json";
+      toJsonButton.tabIndex = -1;
+      toJsonButton.contentEditable = "false";
+      toJsonButton.setAttribute("aria-label", "convert csv to json");
+      toJsonButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(toJsonButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const json = csvToJSON.convert(code);
+        navigator.clipboard.writeText(json);
+        toJsonButton.textContent = "copied";
+        const revert = setTimeout(() => {
+          toJsonButton.textContent = "→json";
+        }, 1100);
+        toJsonButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(toJsonButton);
+
+      // CSV → YAML button
+      const toYamlButton = document.createElement("button");
+      toYamlButton.className = "cm-code-util";
+      toYamlButton.textContent = "→yaml";
+      toYamlButton.tabIndex = -1;
+      toYamlButton.contentEditable = "false";
+      toYamlButton.setAttribute("aria-label", "convert csv to yaml");
+      toYamlButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(toYamlButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const yaml = csvToYAML.convert(code);
+        navigator.clipboard.writeText(yaml);
+        toYamlButton.textContent = "copied";
+        const revert = setTimeout(() => {
+          toYamlButton.textContent = "→yaml";
+        }, 1100);
+        toYamlButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(toYamlButton);
+
+      // CSV → XML button
+      const toXmlButton = document.createElement("button");
+      toXmlButton.className = "cm-code-util";
+      toXmlButton.textContent = "→xml";
+      toXmlButton.tabIndex = -1;
+      toXmlButton.contentEditable = "false";
+      toXmlButton.setAttribute("aria-label", "convert csv to xml");
+      toXmlButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(toXmlButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const xml = csvToXML.convert(code);
+        navigator.clipboard.writeText(xml);
+        toXmlButton.textContent = "copied";
+        const revert = setTimeout(() => {
+          toXmlButton.textContent = "→xml";
+        }, 1100);
+        toXmlButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(toXmlButton);
+
+      // Analyze button
+      const analyzeButton = document.createElement("button");
+      analyzeButton.className = "cm-code-util";
+      analyzeButton.textContent = "analyze";
+      analyzeButton.tabIndex = -1;
+      analyzeButton.contentEditable = "false";
+      analyzeButton.setAttribute("aria-label", "analyze csv structure");
+      analyzeButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(analyzeButton));
+        if (!block) return;
+        const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+        const analysis = csvAnalyzer.analyze(code);
+        const report = csvAnalyzer.formatAnalysis(analysis);
+        navigator.clipboard.writeText(report);
+        analyzeButton.textContent = "copied";
+        const revert = setTimeout(() => {
+          analyzeButton.textContent = "analyze";
+        }, 1100);
+        analyzeButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+      });
+      utilsContainer.appendChild(analyzeButton);
 
       wrap.appendChild(utilsContainer);
     }
