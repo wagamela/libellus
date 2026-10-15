@@ -151,33 +151,37 @@ function build(view: EditorView): DecorationSet {
   if (!state.doc.toString().includes("```")) return Decoration.none;
 
   const ranges: Range<Decoration>[] = [];
-  for (const block of blocksIn(state.doc)) {
-    if (block.bodyTo <= block.bodyFrom) continue;
-    // Only what is on screen: a mark decoration may not reach outside the
-    // rendered range, and a long note of snippets should not be parsed whole
-    // to draw the one block the user is looking at.
-    if (block.bodyTo < view.viewport.from || block.bodyFrom > view.viewport.to) continue;
-    const code = state.doc.sliceString(block.bodyFrom, block.bodyTo);
-    if (code.length > MAX_BODY) continue;
-    const lang = detectCodeLanguage(code);
-    if (!lang) continue;
-    const parser = parserFor(lang, view);
-    if (!parser) continue;
-    // Tokens are emitted for the visible slice only — a decoration a plugin
-    // provides has to stay inside the rendered range — while the tree is still
-    // parsed from the whole body, so scrolling into the middle of a long block
-    // does not change how the code is read.
-    highlightTree(
-      treeFor(parser, lang, code),
-      libellusHighlight,
-      (from, to, classes) => {
-        ranges.push(
-          Decoration.mark({ class: classes }).range(block.bodyFrom + from, block.bodyFrom + to),
-        );
-      },
-      Math.max(0, view.viewport.from - block.bodyFrom),
-      Math.min(code.length, view.viewport.to - block.bodyFrom),
-    );
+  try {
+    for (const block of blocksIn(state.doc)) {
+      if (block.bodyTo <= block.bodyFrom) continue;
+      // Only what is on screen: a mark decoration may not reach outside the
+      // rendered range, and a long note of snippets should not be parsed whole
+      // to draw the one block the user is looking at.
+      if (block.bodyTo < view.viewport.from || block.bodyFrom > view.viewport.to) continue;
+      const code = state.doc.sliceString(block.bodyFrom, block.bodyTo);
+      if (code.length > MAX_BODY) continue;
+      const lang = detectCodeLanguage(code);
+      if (!lang) continue;
+      const parser = parserFor(lang, view);
+      if (!parser) continue;
+      // Tokens are emitted for the visible slice only — a decoration a plugin
+      // provides has to stay inside the rendered range — while the tree is still
+      // parsed from the whole body, so scrolling into the middle of a long block
+      // does not change how the code is read.
+      highlightTree(
+        treeFor(parser, lang, code),
+        libellusHighlight,
+        (from, to, classes) => {
+          ranges.push(
+            Decoration.mark({ class: classes }).range(block.bodyFrom + from, block.bodyFrom + to),
+          );
+        },
+        Math.max(0, view.viewport.from - block.bodyFrom),
+        Math.min(code.length, view.viewport.to - block.bodyFrom),
+      );
+    }
+  } catch (error) {
+    console.error("libellus: code highlighting error", error);
   }
   return Decoration.set(ranges, true);
 }
