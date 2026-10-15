@@ -41,7 +41,6 @@ interface TokenStyle {
   color?: string;
   fontStyle?: string;
   fontWeight?: string;
-  textDecoration?: string;
 }
 
 const TOKEN_STYLES: TokenStyle[] = [
@@ -68,13 +67,13 @@ const TOKEN_STYLES: TokenStyle[] = [
   { tag: [t.definition(t.function(t.variableName)), t.definition(t.className)], color: "#b8d8ff", fontWeight: "600" },
   { tag: [t.variableName, t.definition(t.propertyName)], color: "#e4ebf4" },
   { tag: [t.definition(t.variableName)], color: "#f4f8fc", fontWeight: "500" },
-  { tag: [t.invalid], color: "#e0a0a0", textDecoration: "underline wavy" },
+  { tag: [t.invalid], color: "#e0a0a0" },
   // Prose, which is not code: the achromatic rule still holds here. A detected
   // snippet is never markdown, so these only ever come from a note's own
   // grammar, outside any block.
   { tag: [t.heading], color: "#ffffff", fontWeight: "600" },
   { tag: [t.heading1, t.heading2], color: "#ffffff", fontWeight: "700" },
-  { tag: [t.link, t.url], color: "#ced9e7", textDecoration: "underline" },
+  { tag: [t.link, t.url], color: "#ced9e7" },
   { tag: [t.emphasis], fontStyle: "italic" },
   { tag: [t.strong], fontWeight: "600" },
   { tag: [t.quote], color: "#8b97a8" },
