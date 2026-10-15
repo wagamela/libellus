@@ -136,8 +136,9 @@ export async function loadLanguage(language: Language): Promise<Extension> {
       return (await import("@codemirror/lang-sql")).sql();
     case "yaml":
       return yamlLanguageWithHighlight();
-    case "xml":
     case "csv":
+      return csvLanguageWithHighlight();
+    case "xml":
     case "text":
     default:
       return [];
@@ -247,6 +248,38 @@ async function yamlParserWithHighlight(): Promise<Parser | null> {
   });
 
   return yamlWithTags.parser;
+}
+
+/** CSV language with syntax highlighting for field separation and quotes. */
+async function csvLanguageWithHighlight(): Promise<LanguageSupport> {
+  const { StreamLanguage } = await import("@codemirror/language");
+
+  const csvMode = {
+    startState: () => ({ inQuote: false }),
+    token: (stream: any, state: any) => {
+      if (state.inQuote) {
+        stream.skipUntil('"');
+        if (stream.eat('"')) {
+          state.inQuote = false;
+        } else {
+          stream.skipToEnd();
+        }
+        return "string";
+      }
+      if (stream.eat('"')) {
+        state.inQuote = true;
+        return "string";
+      }
+      if (/\d/.test(stream.peek() || "")) {
+        stream.eatWhile(/[\d.]/);
+        return "number";
+      }
+      stream.eatWhile(/[^",\n]/);
+      return null;
+    },
+  };
+
+  return new LanguageSupport(StreamLanguage.define(csvMode));
 }
 
 /** Simple XML stream parser for snippet highlighting. */

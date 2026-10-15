@@ -161,9 +161,10 @@ const YAML: Signal[] = [
 
 const CSV: Signal[] = [
   { re: /^[^,\n]*,"[^"]*"[^,\n]*(?:,[^,\n]*,"[^"]*"[^,\n]*)*$/, weight: 6 },
-  { re: /^[A-Za-z_][\w]*(?:,[A-Za-z_][\w]*)+$/m, weight: 4 },
-  { re: /^[^,\n]+,[^,\n]+(?:\r?\n[^,\n]+,[^,\n]+)*\s*$/, weight: 3 },
+  { re: /^[A-Za-z_][\w-]*(?:,[A-Za-z_][\w-]*)+$/m, weight: 4 },
+  { re: /,[^,\n]*(?:\n[^,\n]*,[^,\n]*)+/m, weight: 5 },
   { re: /,"/, weight: 2 },
+  { re: /^.+,.+(?:\r?\n.+,.+){2,}/m, weight: 4 },
 ];
 
 const XML: Signal[] = [
