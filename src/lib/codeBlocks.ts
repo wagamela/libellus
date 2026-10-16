@@ -190,9 +190,8 @@ export function insertCodeBlock(language: () => Language | null): Command {
     // `codeHighlight.ts`), and a language guessed by the editor is better than
     // one stamped on the fence before there is any code to stamp it for.
     const open = "```" + (language() ?? "");
-    // Without this there is no line below a block at the end of the document,
-    // and so no way to type past it.
-    const tail = endLine.to >= state.doc.length ? "\n" : "";
+    // Spacing line after blocks ensures they don't look cramped when stacked.
+    const tail = "\n";
     const insert = `${lead}${open}\n${content}\n\`\`\`${tail}`;
     view.dispatch({
       changes: { from: startLine.from, to: endLine.to, insert },
