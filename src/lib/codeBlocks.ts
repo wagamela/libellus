@@ -190,8 +190,8 @@ export function insertCodeBlock(language: () => Language | null): Command {
     // `codeHighlight.ts`), and a language guessed by the editor is better than
     // one stamped on the fence before there is any code to stamp it for.
     const open = "```" + (language() ?? "");
-    // Spacing line after blocks ensures they don't look cramped when stacked.
-    const tail = "\n";
+    // Spacing: blank line after block is uneditable (two newlines: one for fence, one for blank)
+    const tail = "\n\n";
     const insert = `${lead}${open}\n${content}\n\`\`\`${tail}`;
     view.dispatch({
       changes: { from: startLine.from, to: endLine.to, insert },
@@ -1252,7 +1252,10 @@ function fenceGuards(doc: Text): { outer: [number, number]; fences: [number, num
     if (block.closed) {
       const close = doc.line(block.endLine);
       fences.push([Math.max(close.from - 1, 0), close.to]);
-      end = close.to;
+      // Protect the blank line after closing fence: it's from close.to to close.to+2
+      // (one newline to end the fence line, one newline for the blank line)
+      fences.push([close.to, Math.min(close.to + 2, doc.length)]);
+      end = close.to + 2;
     }
     return { outer: [block.openFrom, end], fences };
   });
