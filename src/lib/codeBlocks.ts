@@ -190,9 +190,8 @@ export function insertCodeBlock(language: () => Language | null): Command {
     // `codeHighlight.ts`), and a language guessed by the editor is better than
     // one stamped on the fence before there is any code to stamp it for.
     const open = "```" + (language() ?? "");
-    // Without this there is no line below a block at the end of the document,
-    // and so no way to type past it.
-    const tail = endLine.to >= state.doc.length ? "\n" : "";
+    // Spacing line after blocks ensures they don't look cramped when stacked.
+    const tail = "\n";
     const insert = `${lead}${open}\n${content}\n\`\`\`${tail}`;
     view.dispatch({
       changes: { from: startLine.from, to: endLine.to, insert },
@@ -1252,8 +1251,8 @@ function fenceGuards(doc: Text): { outer: [number, number]; fences: [number, num
     let end = block.bodyTo;
     if (block.closed) {
       const close = doc.line(block.endLine);
-      fences.push([Math.max(close.from - 1, 0), close.to]);
-      end = close.to;
+      fences.push([Math.max(close.from - 1, 0), Math.min(close.to + 1, doc.length)]);
+      end = close.to + 1;
     }
     return { outer: [block.openFrom, end], fences };
   });
