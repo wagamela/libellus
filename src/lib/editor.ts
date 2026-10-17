@@ -84,6 +84,7 @@ const TOKEN_STYLES: TokenStyle[] = [
 export const libellusHighlight = HighlightStyle.define(TOKEN_STYLES);
 
 export const libellusTheme: Extension = [
+  syntaxHighlighting(libellusHighlight),
   EditorView.theme(
     {
       "&": { color: "#eef3f9", backgroundColor: "transparent" },
@@ -99,7 +100,6 @@ export const libellusTheme: Extension = [
     },
     { dark: true },
   ),
-  syntaxHighlighting(libellusHighlight),
   indentUnit.of("  "),
 ];
 
