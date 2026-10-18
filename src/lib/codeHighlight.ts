@@ -151,8 +151,11 @@ function build(view: EditorView): DecorationSet {
   if (!state.doc.toString().includes("```")) return Decoration.none;
 
   const ranges: Range<Decoration>[] = [];
-  try {
-    for (const block of blocksIn(state.doc)) {
+  for (const block of blocksIn(state.doc)) {
+    // Per block: a grammar that throws leaves its own block plain, not every
+    // block after it — which made colours come and go as blocks scrolled by.
+    const start = ranges.length;
+    try {
       if (block.bodyTo <= block.bodyFrom) continue;
       // Only what is on screen: a mark decoration may not reach outside the
       // rendered range, and a long note of snippets should not be parsed whole
@@ -179,9 +182,10 @@ function build(view: EditorView): DecorationSet {
         Math.max(0, view.viewport.from - block.bodyFrom),
         Math.min(code.length, view.viewport.to - block.bodyFrom),
       );
+    } catch (error) {
+      ranges.length = start;
+      console.error("libellus: code highlighting error", error);
     }
-  } catch (error) {
-    console.error("libellus: code highlighting error", error);
   }
   return Decoration.set(ranges, true);
 }

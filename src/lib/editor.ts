@@ -249,35 +249,37 @@ async function yamlParserWithHighlight(): Promise<Parser | null> {
   return yamlWithTags.parser;
 }
 
+/** Minimal CSV tokenizer: quoted fields and numbers. Every branch must consume
+ *  at least one character, or the stream parser throws. */
+const csvMode = {
+  startState: () => ({ inQuote: false }),
+  token: (stream: any, state: any) => {
+    if (state.inQuote) {
+      stream.skipUntil('"');
+      if (stream.eat('"')) {
+        state.inQuote = false;
+      } else {
+        stream.skipToEnd();
+      }
+      return "string";
+    }
+    if (stream.eat('"')) {
+      state.inQuote = true;
+      return "string";
+    }
+    if (/\d/.test(stream.peek() || "")) {
+      stream.eatWhile(/[\d.]/);
+      return "number";
+    }
+    // The separator itself matches nothing above.
+    if (!stream.eatWhile(/[^",]/)) stream.next();
+    return null;
+  },
+};
+
 /** CSV language with syntax highlighting for field separation and quotes. */
 async function csvLanguageWithHighlight(): Promise<LanguageSupport> {
   const { StreamLanguage } = await import("@codemirror/language");
-
-  const csvMode = {
-    startState: () => ({ inQuote: false }),
-    token: (stream: any, state: any) => {
-      if (state.inQuote) {
-        stream.skipUntil('"');
-        if (stream.eat('"')) {
-          state.inQuote = false;
-        } else {
-          stream.skipToEnd();
-        }
-        return "string";
-      }
-      if (stream.eat('"')) {
-        state.inQuote = true;
-        return "string";
-      }
-      if (/\d/.test(stream.peek() || "")) {
-        stream.eatWhile(/[\d.]/);
-        return "number";
-      }
-      stream.eatWhile(/[^",\n]/);
-      return null;
-    },
-  };
-
   return new LanguageSupport(StreamLanguage.define(csvMode));
 }
 
@@ -291,33 +293,6 @@ async function xmlParser(): Promise<Parser | null> {
 /** Simple CSV stream parser for snippet highlighting. */
 async function csvParser(): Promise<Parser | null> {
   const { StreamLanguage } = await import("@codemirror/language");
-
-  // Minimal CSV tokenizer: highlights quoted fields and numbers.
-  const csvMode = {
-    startState: () => ({ inQuote: false }),
-    token: (stream: any, state: any) => {
-      if (state.inQuote) {
-        stream.skipUntil('"');
-        if (stream.eat('"')) {
-          state.inQuote = false;
-        } else {
-          stream.skipToEnd();
-        }
-        return "string";
-      }
-      if (stream.eat('"')) {
-        state.inQuote = true;
-        return "string";
-      }
-      if (/\d/.test(stream.peek() || "")) {
-        stream.eatWhile(/\d/);
-        return "number";
-      }
-      stream.eatWhile(/[^",\n]/);
-      return null;
-    },
-  };
-
   return StreamLanguage.define(csvMode).parser;
 }
 

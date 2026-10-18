@@ -27,8 +27,11 @@ interface Signal {
  *  these too — it is a superset, so anything JavaScript-shaped is also
  *  TypeScript-shaped — and the exclusive list below is what separates them. */
 const JS: Signal[] = [
-  { re: /\b(?:const|let)\s+[A-Za-z_$][\w$]*\s*=/, weight: 3 },
+  // `let x =` is Rust too; `const x =` with no type between is only this family.
+  { re: /\bconst\s+[A-Za-z_$][\w$]*\s*=/, weight: 5 },
+  { re: /\blet\s+[A-Za-z_$][\w$]*\s*=/, weight: 3 },
   { re: /\bfunction\s*\*?\s*[A-Za-z_$]*\s*\(/, weight: 3 },
+  { re: /\bfunction\s*\*?\s*[A-Za-z_$][\w$]*\s*\([^)\n]*\)\s*\{/, weight: 4 },
   { re: /=>\s*[{(\[`'"A-Za-z0-9_$]/, weight: 3 },
   { re: /\bconsole\.(?:log|warn|error|info|debug)\s*\(/, weight: 4 },
   { re: /\b(?:import|export)\b[^\n]*\bfrom\s+['"]/, weight: 3 },
@@ -41,7 +44,7 @@ const JS: Signal[] = [
   { re: /[=!]==/, weight: 2 },
   { re: /\.(?:then|map|filter|forEach|reduce|includes|push)\s*\(/, weight: 2 },
   { re: /\bclass\s+[A-Z][\w$]*\s*(?:extends\s+[\w$.]+\s*)?\{/, weight: 2 },
-  { re: /\bdocument\.|\bwindow\.|\bJSON\.(?:parse|stringify)\b/, weight: 2 },
+  { re: /\bdocument\.|\bwindow\.|\bJSON\.(?:parse|stringify)\b|\.addEventListener\s*\(/, weight: 4 },
   { re: /;\s*$/m, weight: 1 },
 ];
 
@@ -62,7 +65,9 @@ const TS: Signal[] = [
 ];
 
 const PYTHON: Signal[] = [
-  { re: /^[ \t]*def\s+[A-Za-z_]\w*\s*\([^\n]*\)\s*(?:->[^:\n]+)?:/m, weight: 6 },
+  // No other language here has `def name(...):`, so it decides on its own.
+  { re: /^[ \t]*def\s+[A-Za-z_]\w*\s*\([^\n]*\)\s*(?:->[^:\n]+)?:/m, weight: 7 },
+  { re: /\bfor\s+[A-Za-z_][\w, ]*\s+in\s+[^\n]*(?::[ \t]*$|\])/m, weight: 4 },
   { re: /^[ \t]*class\s+[A-Za-z_]\w*(?:\([^)\n]*\))?\s*:/m, weight: 5 },
   { re: /^[ \t]*(?:from\s+[\w.]+\s+)?import\s+[\w.*]/m, weight: 4 },
   { re: /\b__(?:init|name|main|str|repr|dict)__\b/, weight: 4 },
