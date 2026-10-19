@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { readSecret, secretsAvailable } from "../lib/secrets";
+import { copySecret, readSecret, secretsAvailable } from "../lib/secrets";
 import { useWorkspace } from "../store/workspace";
 
 /** The editor form's target: an existing secret's id, a new one, or nothing. */
@@ -29,6 +29,8 @@ export function SecretsPanel({ onClose }: { onClose: () => void }) {
   const [value, setValue] = useState("");
   const [armed, setArmed] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** The warning a copy leaves behind: the value is on the clipboard now. */
+  const [notice, setNotice] = useState<string | null>(null);
   const available = secretsAvailable();
 
   const shown = secrets
@@ -37,6 +39,7 @@ export function SecretsPanel({ onClose }: { onClose: () => void }) {
 
   const attempt = async (work: () => Promise<void>) => {
     setError(null);
+    setNotice(null);
     try {
       await work();
     } catch (err) {
@@ -76,6 +79,12 @@ export function SecretsPanel({ onClose }: { onClose: () => void }) {
       const secret = await readSecret(id);
       if (secret === null) throw new Error("the keychain has no value for this secret");
       setRevealed((r) => ({ ...r, [id]: secret }));
+    });
+
+  const copy = (id: string, name: string) =>
+    attempt(async () => {
+      const seconds = await copySecret(id);
+      setNotice(`${name} is on the clipboard — it clears in ${seconds} s`);
     });
 
   // Deleting is irreversible, so it takes two presses like everywhere else.
@@ -145,6 +154,9 @@ export function SecretsPanel({ onClose }: { onClose: () => void }) {
                 </span>
               </span>
               <span className="flex shrink-0 gap-1 self-center">
+                <button className={action} onClick={() => void copy(secret.id, secret.name)}>
+                  copy
+                </button>
                 <button className={action} onClick={() => void toggleReveal(secret.id)}>
                   {secret.id in revealed ? "hide" : "reveal"}
                 </button>
@@ -203,6 +215,7 @@ export function SecretsPanel({ onClose }: { onClose: () => void }) {
               </button>
             )}
             {error && <div className="pt-2 text-[11px] text-danger">{error}</div>}
+            {notice && <div className="pt-2 text-[11px] text-dim">{notice}</div>}
           </div>
         )}
       </div>

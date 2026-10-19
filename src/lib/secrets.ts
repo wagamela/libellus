@@ -28,3 +28,9 @@ export function readSecret(id: string): Promise<string | null> {
 export function eraseSecret(id: string): Promise<void> {
   return call("delete_secret", { id });
 }
+
+/** Copies in the backend, so the value never reaches the webview. Resolves to
+ *  the number of seconds until the clipboard is cleared again. */
+export function copySecret(id: string): Promise<number> {
+  return call("copy_secret", { id });
+}

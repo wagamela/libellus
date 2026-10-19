@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use tauri::Manager;
+use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_dialog::DialogExt;
 
 /// The whole workspace lives in one JSON file inside the OS app-data
@@ -206,10 +207,40 @@ fn delete_secret(id: String) -> Result<(), String> {
     }
 }
 
+/// How long a copied secret stays on the clipboard.
+/// shortcut: fixed period, make it a setting once libellus has settings.
+const CLIPBOARD_CLEAR_SECS: u64 = 30;
+
+/// Copies a secret without it ever entering the webview: the value goes from
+/// the keychain straight to the clipboard, and is cleared again after
+/// `CLIPBOARD_CLEAR_SECS` unless something else has been copied since. The
+/// clipboard plugin is used from here only; the frontend has no clipboard
+/// permission. Returns the clear delay so the UI can say when it happens.
+#[tauri::command(async)]
+fn copy_secret(app: tauri::AppHandle, id: String) -> Result<u64, String> {
+    let value = match secret_entry(&id)?.get_password() {
+        Ok(value) => value,
+        Err(keyring::Error::NoEntry) => return Err("the keychain has no value for this secret".into()),
+        Err(_) => return Err("cannot read secret".into()),
+    };
+    app.clipboard()
+        .write_text(value.as_str())
+        .map_err(|_| "cannot copy secret".to_string())?;
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(CLIPBOARD_CLEAR_SECS));
+        let clipboard = app.clipboard();
+        if clipboard.read_text().ok().as_deref() == Some(value.as_str()) {
+            let _ = clipboard.clear();
+        }
+    });
+    Ok(CLIPBOARD_CLEAR_SECS)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             load_store,
             save_store,
@@ -220,7 +251,8 @@ pub fn run() {
             format_rust,
             set_secret,
             get_secret,
-            delete_secret
+            delete_secret,
+            copy_secret
         ])
         .run(tauri::generate_context!())
         .expect("error while running libellus");
