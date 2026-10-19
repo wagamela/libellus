@@ -4,6 +4,7 @@ import { TabBar } from "./components/TabBar";
 import { Editor } from "./components/Editor";
 import { StatusBar } from "./components/StatusBar";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
+import { SecretsPanel } from "./components/SecretsPanel";
 import { ContextMenu, type ContextMenuState, type MenuAction } from "./components/ContextMenu";
 import { searchDocs } from "./lib/search";
 import { activeEditor } from "./lib/editor";
@@ -19,6 +20,7 @@ type PaletteMode = "commands" | "open" | null;
 export default function App() {
   const store = useWorkspace();
   const [palette, setPalette] = useState<PaletteMode>(null);
+  const [secretsOpen, setSecretsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   /** The menu at the pointer, if one is open. There is one in the app: what a
@@ -209,10 +211,16 @@ export default function App() {
       const key = event.key.toLowerCase();
       if (key === "k") {
         event.preventDefault();
+        setSecretsOpen(false);
         setPalette((p) => (p === "commands" ? null : "commands"));
       } else if (key === "p") {
         event.preventDefault();
+        setSecretsOpen(false);
         setPalette((p) => (p === "open" ? null : "open"));
+      } else if (key === "e" && !event.shiftKey && !event.altKey) {
+        event.preventDefault();
+        setPalette(null);
+        setSecretsOpen((open) => !open);
       } else if (key === "n") {
         event.preventDefault();
         if (event.shiftKey) newSnippet();
@@ -266,6 +274,7 @@ export default function App() {
       { id: "note", label: "new note", hint: "Ctrl N", run: newNote },
       { id: "snippet", label: "new snippet", hint: "Ctrl Shift N", run: newSnippet },
       { id: "open", label: "quick open document", hint: "Ctrl P", run: () => setPalette("open") },
+      { id: "secrets", label: "secrets", hint: "Ctrl E", run: () => setSecretsOpen(true) },
       { id: "save", label: "save", hint: "Ctrl S", run: save },
       { id: "save-as", label: "save as…", hint: "Ctrl Shift S", run: saveAs },
       { id: "code", label: "insert code block", hint: "Ctrl Alt C", run: insertCode },
@@ -480,6 +489,7 @@ export default function App() {
       label: "View",
       items: [
         { label: "Command Palette", shortcut: "Ctrl K", action: () => setPalette("commands") },
+        { label: "Secrets", shortcut: "Ctrl E", action: () => setSecretsOpen(true) },
         {
           label: "Next Tab",
           shortcut: "Ctrl Tab",
@@ -712,6 +722,14 @@ export default function App() {
           placeholder={palette === "commands" ? "run a command…" : "open a note or snippet…"}
           build={palette === "commands" ? buildCommands : buildOpen}
           onClose={() => setPalette(null)}
+        />
+      )}
+      {secretsOpen && (
+        <SecretsPanel
+          onClose={() => {
+            setSecretsOpen(false);
+            focusEditor();
+          }}
         />
       )}
       {context && <ContextMenu state={context} onClose={() => setContext(null)} />}
