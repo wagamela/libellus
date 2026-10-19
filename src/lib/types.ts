@@ -28,17 +28,31 @@ export interface Doc {
   updatedAt: number;
 }
 
+/**
+ * What the workspace knows about a secret. The value itself is in the OS
+ * credential store under `id` and is never part of this shape, so nothing that
+ * reads, searches or exports the store can reach it.
+ */
+export interface SecretMeta {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 /** Everything libellus persists. Versioned so early stores can be migrated. */
 export interface Store {
-  version: 1;
+  version: 2;
   docs: Doc[];
+  secrets: SecretMeta[];
   openTabs: string[];
   activeTab: string | null;
 }
 
 export const emptyStore: Store = {
-  version: 1,
+  version: 2,
   docs: [],
+  secrets: [],
   openTabs: [],
   activeTab: null,
 };

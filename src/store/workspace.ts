@@ -3,7 +3,8 @@ import { loadStore, saveStore } from "../lib/storage";
 import { saveDocumentAs } from "../lib/files";
 import { IMAGE_REF, deleteImage, imageRefs } from "../lib/images";
 import { isFenceLine } from "../lib/codeBlocks";
-import { newId, type Doc, type DocKind, type Language } from "../lib/types";
+import { eraseSecret, writeSecret } from "../lib/secrets";
+import { newId, type Doc, type DocKind, type Language, type SecretMeta } from "../lib/types";
 
 export type SaveStatus = "idle" | "modified" | "saving" | "saved" | "error";
 
@@ -23,6 +24,8 @@ interface WorkspaceState {
   ready: boolean;
   /** Most recently closed last: `reopenTab` pops from the end. */
   closedTabs: ClosedTab[];
+  /** Metadata only: values are in the OS credential store, see `lib/secrets`. */
+  secrets: SecretMeta[];
 
   init: () => Promise<void>;
   createDoc: (kind: DocKind, seed?: Partial<Doc>) => string;
@@ -38,6 +41,9 @@ interface WorkspaceState {
   deleteDoc: (id: string) => void;
   flush: () => Promise<void>;
   saveAs: (id: string) => Promise<void>;
+  createSecret: (name: string, value: string) => Promise<void>;
+  updateSecret: (id: string, patch: { name?: string; value?: string }) => Promise<void>;
+  deleteSecret: (id: string) => Promise<void>;
 }
 
 const DEFAULT_LANGUAGE: Record<DocKind, Language> = {
@@ -94,6 +100,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     status: "idle",
     ready: false,
     closedTabs: [],
+    secrets: [],
 
     async init() {
       const store = await loadStore();
@@ -105,7 +112,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const openTabs = store.openTabs.filter((id) => docs[id]);
       const restored =
         store.activeTab && docs[store.activeTab] ? store.activeTab : openTabs[0] ?? null;
-      set({ docs, order, openTabs, activeTab: restored, ready: true });
+      set({ docs, order, openTabs, activeTab: restored, secrets: store.secrets, ready: true });
 
       // There is no landing page: the window always opens on a document the
       // user can type into. Failing a restored tab, that is the most recently
@@ -275,14 +282,44 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       }
     },
 
+    // The keychain is written before the metadata in every one of these: a
+    // failed write leaves no entry pointing at a value that is not there. They
+    // reject with the backend's fixed message, never with the value.
+    async createSecret(name, value) {
+      const id = newId();
+      await writeSecret(id, value);
+      const now = Date.now();
+      set({ secrets: [...get().secrets, { id, name: name.trim(), createdAt: now, updatedAt: now }] });
+      await get().flush();
+    },
+
+    async updateSecret(id, patch) {
+      if (patch.value !== undefined) await writeSecret(id, patch.value);
+      set({
+        secrets: get().secrets.map((s) =>
+          s.id === id
+            ? { ...s, name: patch.name?.trim() || s.name, updatedAt: Date.now() }
+            : s,
+        ),
+      });
+      await get().flush();
+    },
+
+    async deleteSecret(id) {
+      await eraseSecret(id);
+      set({ secrets: get().secrets.filter((s) => s.id !== id) });
+      await get().flush();
+    },
+
     async flush() {
       clearTimeout(saveTimer);
-      const { docs, openTabs, activeTab } = get();
+      const { docs, secrets, openTabs, activeTab } = get();
       set({ status: "saving" });
       try {
         await saveStore({
-          version: 1,
+          version: 2,
           docs: Object.values(docs),
+          secrets,
           openTabs,
           activeTab,
         });
