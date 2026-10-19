@@ -92,6 +92,15 @@ which ask the *syntax tree* which asterisks are markup so that `2 * 3 * 4`, a `*
 and anything inside code keep theirs. Both the commands and the decorations are notes only: in
 a snippet an asterisk is an operator.
 
+**Secrets.** A secret's value is in the OS credential store (the `keyring` crate), keyed by
+the secret's id; `Store.secrets` holds only `SecretMeta` (id, name, timestamps). The Rust
+commands `set_secret` / `get_secret` / `delete_secret` / `copy_secret` are the only path to a
+value, return fixed error strings, and `copy_secret` writes the clipboard from Rust so the
+value never enters the webview. `src/lib/secrets.ts` wraps them and refuses in a plain
+browser — there is no localStorage fallback for secrets. The workspace store always writes
+the keychain before the metadata. `SecretsPanel` is the only UI; secrets are not docs, not
+in search and not in save-as.
+
 **Search.** `src/lib/search.ts` is an in-memory subsequence ranker over titles and bodies,
 deliberately simple until SQLite FTS replaces it.
 
@@ -124,7 +133,7 @@ deliberately simple until SQLite FTS replaces it.
 
 ## Constraints from the spec
 
-When the secrets feature lands: secrets must never be plaintext database fields, use
+Secrets must never be plaintext database fields, use
 platform-native secure storage and established crypto libraries (never custom cryptography),
 and sensitive values must never reach logs, error messages or console output. Clipboard
 copies of secrets are a sensitive operation (clearing, warnings).

@@ -76,11 +76,21 @@ shell and the editor. See `project_spec.md` for the full product scope and
   localStorage fallback when the frontend runs in a plain browser (pasted
   images sit in an `images/` directory next to the store, or in IndexedDB in
   the browser fallback)
+- Secrets (`Ctrl E`, also View > Secrets and the command palette): API keys,
+  tokens, passwords and the like, kept in a panel of their own rather than in
+  tabs, so they never mix with notes and snippets. Values live in the OS
+  credential store (Keychain, Windows Credential Manager, Secret Service on
+  Linux); the workspace store holds only each secret's name and timestamps, so
+  nothing that reads, searches or saves out documents can reach a value. A
+  value is shown only on request, and `copy` puts it on the clipboard from the
+  Rust side — it never enters the webview — and clears it again after 30
+  seconds unless something else was copied since. Outside the desktop app
+  secrets are unavailable rather than falling back to plaintext storage
 - Fully offline: no network requests, no accounts, no telemetry
 
 ## Not in this version
 
-Secrets, projects, developer utilities (JSON/Base64/UUID/JWT/…), tags and
+Projects, developer utilities (JSON/Base64/UUID/JWT/…), tags and
 SQLite FTS are specified but deliberately deferred. The storage layer is a
 single versioned JSON document behind `src/lib/storage.ts`, so SQLite can
 replace it without touching the UI.
@@ -109,6 +119,7 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 | Save             | `Ctrl S`       |
 | Save as          | `Ctrl Shift S` |
 | Find in document | `Ctrl F`       |
+| Secrets          | `Ctrl E`       |
 | Bold             | `Ctrl B`       |
 | Italic           | `Ctrl I`       |
 | Underline        | `Ctrl U`       |
@@ -128,11 +139,11 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 ```text
 src/
   components/   MenuBar, ContextMenu (the shared menu panel), TabBar, Editor,
-                CommandPalette, StatusBar
-  lib/          types, storage, images, code blocks, snippet language
+                CommandPalette, SecretsPanel, StatusBar
+  lib/          types, storage, secrets, images, code blocks, snippet language
                 detection and highlighting, prose emphasis, files, search,
                 editor theme and lazy language loading
   store/        zustand workspace store (documents, tabs, autosave)
-src-tauri/      Rust shell; load_store / save_store, the image commands and
-                save_document_as
+src-tauri/      Rust shell; load_store / save_store, the image commands,
+                save_document_as and the keychain-backed secret commands
 ```
