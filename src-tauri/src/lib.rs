@@ -163,6 +163,49 @@ fn format_rust(code: String) -> Result<String, String> {
     String::from_utf8(output.stdout).map_err(|_| "rustfmt returned invalid text".into())
 }
 
+/// Secret values are handed to the OS credential store and never touch
+/// libellus's own files. Each one is keyed by the secret's id; the name and
+/// timestamps stay in the store as ordinary metadata.
+///
+/// Errors are fixed strings: the keyring's own messages are never forwarded,
+/// so nothing a caller logs can carry a value.
+const SECRET_SERVICE: &str = "libellus";
+
+fn secret_entry(id: &str) -> Result<keyring::Entry, String> {
+    // Ids come from the frontend; only the UUIDs it generates are accepted.
+    let safe = !id.is_empty()
+        && id.len() <= 64
+        && id.chars().all(|c| c.is_ascii_hexdigit() || c == '-');
+    if !safe {
+        return Err("invalid secret id".into());
+    }
+    keyring::Entry::new(SECRET_SERVICE, id).map_err(|_| "secure storage is unavailable".into())
+}
+
+#[tauri::command(async)]
+fn set_secret(id: String, value: String) -> Result<(), String> {
+    secret_entry(&id)?
+        .set_password(&value)
+        .map_err(|_| "cannot store secret".into())
+}
+
+#[tauri::command(async)]
+fn get_secret(id: String) -> Result<Option<String>, String> {
+    match secret_entry(&id)?.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(_) => Err("cannot read secret".into()),
+    }
+}
+
+#[tauri::command(async)]
+fn delete_secret(id: String) -> Result<(), String> {
+    match secret_entry(&id)?.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(_) => Err("cannot delete secret".into()),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -174,8 +217,34 @@ pub fn run() {
             load_image,
             delete_image,
             save_document_as,
-            format_rust
+            format_rust,
+            set_secret,
+            get_secret,
+            delete_secret
         ])
         .run(tauri::generate_context!())
         .expect("error while running libellus");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn secret_ids_are_uuids_only() {
+        assert!(secret_entry("../store").is_err());
+        assert!(secret_entry("").is_err());
+        assert!(secret_entry("x").is_err());
+    }
+
+    /// Talks to the real OS credential store: `cargo test -- --ignored`.
+    #[test]
+    #[ignore]
+    fn secret_round_trip() {
+        let id = "00000000-0000-4000-8000-000000000000".to_string();
+        set_secret(id.clone(), "hunter2".into()).unwrap();
+        assert_eq!(get_secret(id.clone()).unwrap().as_deref(), Some("hunter2"));
+        delete_secret(id.clone()).unwrap();
+        assert_eq!(get_secret(id).unwrap(), None);
+    }
 }
