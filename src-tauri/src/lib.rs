@@ -135,6 +135,34 @@ fn save_document_as(
     Ok(Some(path.display().to_string()))
 }
 
+/// Rust is formatted by the user's own rustfmt: there is no formatter for it
+/// that runs in the webview without dropping comments. Code goes in on stdin and
+/// comes back on stdout, so nothing is written to disk.
+#[tauri::command(async)]
+fn format_rust(code: String) -> Result<String, String> {
+    use std::process::{Command, Stdio};
+    let mut child = Command::new("rustfmt")
+        .args(["--emit", "stdout", "--edition", "2021"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|_| "rustfmt is not installed".to_string())?;
+    child
+        .stdin
+        .take()
+        .ok_or("cannot reach rustfmt")?
+        .write_all(code.as_bytes())
+        .map_err(|e| format!("cannot write to rustfmt: {e}"))?;
+    let output = child
+        .wait_with_output()
+        .map_err(|e| format!("rustfmt failed: {e}"))?;
+    if !output.status.success() {
+        return Err("rust code does not parse".into());
+    }
+    String::from_utf8(output.stdout).map_err(|_| "rustfmt returned invalid text".into())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -145,7 +173,8 @@ pub fn run() {
             save_image,
             load_image,
             delete_image,
-            save_document_as
+            save_document_as,
+            format_rust
         ])
         .run(tauri::generate_context!())
         .expect("error while running libellus");

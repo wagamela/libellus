@@ -114,7 +114,8 @@ deliberately simple until SQLite FTS replaces it.
 - The UI is set in Geist (sans) throughout and lowercase in most labels; the only Geist Mono
   in the app is the `libellus` wordmark in the top-right of the menu bar; it should read as a native
   desktop tool, not a web page.
-- The CSP in `tauri.conf.json` allows only self, inline styles, data images and data fonts.
+- The CSP in `tauri.conf.json` allows only self, inline styles, data images, data fonts and
+  `'wasm-unsafe-eval'` (the bundled Python and C++/C# formatters are wasm).
   No network requests, no accounts, no telemetry — fonts and assets must be bundled, never
   fetched from a CDN.
 - Tauri permissions stay minimal: `core:default` only. Storage goes through the two libellus

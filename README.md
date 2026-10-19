@@ -113,6 +113,7 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 | Italic           | `Ctrl I`       |
 | Underline        | `Ctrl U`       |
 | Insert code block| `Ctrl Alt C`   |
+| Format code      | `Ctrl Shift F` |
 | Paste image      | `Ctrl V`       |
 | Rename tab       | `F2`           |
 | Close tab        | `Ctrl W`       |

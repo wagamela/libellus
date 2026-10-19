@@ -44,6 +44,7 @@ import { csvToJSON } from "./formatters/csv-to-json";
 import { csvToYAML } from "./formatters/csv-to-yaml";
 import { csvToXML } from "./formatters/csv-to-xml";
 import { csvAnalyzer } from "./formatters/csv-analyzer";
+import { formatCode } from "./format";
 
 /**
  * Code snippet areas inside a document. A block is ordinary fenced text —
@@ -215,6 +216,39 @@ function writeFenceInfo(view: EditorView, block: CodeBlock, info: string): void 
     annotations: fenceEdit.of(true),
     userEvent: "input",
   });
+}
+
+/**
+ * Formats a block's code in place, reporting the outcome on `button` when there
+ * is one. The formatter may be loading for a moment, so the result is dropped
+ * if the code changed underneath it.
+ */
+export async function formatBlock(
+  view: EditorView,
+  block: CodeBlock,
+  language: Language,
+  button?: HTMLElement,
+): Promise<void> {
+  const code = view.state.doc.sliceString(block.bodyFrom, block.bodyTo);
+  let label = "formatted";
+  try {
+    const formatted = await formatCode(language, code);
+    const now = blockAt(view.state, block.bodyFrom);
+    if (now && view.state.doc.sliceString(now.bodyFrom, now.bodyTo) === code && formatted !== code) {
+      view.dispatch({
+        changes: { from: now.bodyFrom, to: now.bodyTo, insert: formatted },
+        userEvent: "input",
+      });
+    }
+  } catch {
+    label = "invalid";
+  }
+  if (!button) return;
+  button.textContent = label;
+  const revert = setTimeout(() => {
+    button.textContent = "format";
+  }, 1100);
+  button.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
 }
 
 /** The code inside the block the caret is in. */
@@ -808,12 +842,7 @@ class ToolsWidget extends WidgetType {
         event.preventDefault();
         const block = blockAt(view.state, view.posAtDOM(formatButton));
         if (!block) return;
-        // YAML is already formatted, just show feedback
-        formatButton.textContent = "formatted";
-        const revert = setTimeout(() => {
-          formatButton.textContent = "format";
-        }, 1100);
-        formatButton.addEventListener("mousedown", () => clearTimeout(revert), { once: true });
+        void formatBlock(view, block, "yaml", formatButton);
       });
       utilsContainer.appendChild(formatButton);
 
@@ -1078,6 +1107,26 @@ class ToolsWidget extends WidgetType {
       });
       utilsContainer.appendChild(analyzeButton);
 
+      wrap.appendChild(utilsContainer);
+    }
+
+    // Every other recognised language gets just the one tool.
+    if (this.language && !["json", "xml", "yaml", "csv"].includes(this.language)) {
+      const language = this.language as Language;
+      const utilsContainer = document.createElement("span");
+      utilsContainer.className = "cm-code-utils";
+      const formatButton = document.createElement("button");
+      formatButton.className = "cm-code-util";
+      formatButton.textContent = "format";
+      formatButton.tabIndex = -1;
+      formatButton.contentEditable = "false";
+      formatButton.setAttribute("aria-label", `format ${language}`);
+      formatButton.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        const block = blockAt(view.state, view.posAtDOM(formatButton));
+        if (block) void formatBlock(view, block, language, formatButton);
+      });
+      utilsContainer.appendChild(formatButton);
       wrap.appendChild(utilsContainer);
     }
 

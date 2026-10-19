@@ -32,8 +32,12 @@
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@lezer/highlight": "^1.2.1",
     "@tauri-apps/api": "^2.5.0",
+    "@wasm-fmt/clang-format": "^23.1.1",
+    "@wasm-fmt/ruff_fmt": "^0.15.20",
+    "prettier": "^3.9.10",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "sql-formatter": "^15.9.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

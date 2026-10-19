@@ -7,7 +7,9 @@ import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
 import { ContextMenu, type ContextMenuState, type MenuAction } from "./components/ContextMenu";
 import { searchDocs } from "./lib/search";
 import { activeEditor } from "./lib/editor";
-import { blockAtCursor, codeBlockBody, insertCodeBlock } from "./lib/codeBlocks";
+import { blockAtCursor, codeBlockBody, formatBlock, insertCodeBlock } from "./lib/codeBlocks";
+import { detectCodeLanguage } from "./lib/detect";
+import { canFormatLanguage, formatCode } from "./lib/format";
 import { toggleEmphasis, type Emphasis } from "./lib/emphasis";
 import { LANGUAGES } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
@@ -107,6 +109,28 @@ export default function App() {
     [activeDoc],
   );
   const prose = activeDoc?.kind === "note";
+  // In a note the caret's code block is formatted as what it was recognised as;
+  // a snippet is formatted whole, as its own language.
+  const formatActive = useCallback(() => {
+    const view = activeEditor();
+    if (!view || !activeDoc) return;
+    if (activeDoc.kind === "note") {
+      const block = blockAtCursor(view);
+      const language = block && detectCodeLanguage(view.state.doc.sliceString(block.bodyFrom, block.bodyTo));
+      if (block && language) void formatBlock(view, block, language);
+      return;
+    }
+    const code = view.state.doc.toString();
+    formatCode(activeDoc.language, code).then(
+      (formatted) => {
+        // Dropped if the user typed while the formatter was loading.
+        if (formatted === code || view.state.doc.toString() !== code) return;
+        view.dispatch({ changes: { from: 0, to: code.length, insert: formatted }, userEvent: "input" });
+      },
+      () => {}, // Code that does not parse is left exactly as it was.
+    );
+  }, [activeDoc]);
+  const canFormat = activeDoc ? !prose && canFormatLanguage(activeDoc.language) : false;
   const copyCode = useCallback(() => {
     const view = activeEditor();
     const code = view ? codeBlockBody(view) : null;
@@ -211,6 +235,9 @@ export default function App() {
         // its inspector, and `npm run dev` runs in a browser.
         event.preventDefault();
         insertCode();
+      } else if (key === "f" && event.shiftKey) {
+        event.preventDefault();
+        formatActive();
       } else if (key === "t" && event.shiftKey) {
         event.preventDefault();
         reopenTab();
@@ -225,7 +252,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, moveActiveTab, insertCode, emphasise, store]);
+  }, [newNote, newSnippet, save, saveAs, closeActive, reopenTab, renameActive, moveActiveTab, insertCode, emphasise, formatActive, store]);
 
   // Persist on the way out so an autosave in flight is never lost.
   useEffect(() => {
@@ -252,6 +279,12 @@ export default function App() {
         label: "underline",
         hint: prose ? "Ctrl U" : "notes only",
         run: () => emphasise("underline"),
+      },
+      {
+        id: "format",
+        label: prose ? "format code block" : "format document",
+        hint: "Ctrl Shift F",
+        run: formatActive,
       },
       { id: "find", label: "find in document", hint: "Ctrl F", run: findInDoc },
       { id: "rename", label: "rename tab", hint: "F2", run: renameActive },
@@ -283,7 +316,7 @@ export default function App() {
         run: () => moveActiveTab(1),
       },
     ],
-    [newNote, newSnippet, save, saveAs, findInDoc, insertCode, emphasise, prose, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, armed, activeDoc, store],
+    [newNote, newSnippet, save, saveAs, findInDoc, insertCode, emphasise, formatActive, prose, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, armed, activeDoc, store],
   );
 
   const buildCommands = useCallback(
@@ -420,6 +453,12 @@ export default function App() {
           label: "Copy Code Block",
           action: copyCode,
           disabled: !activeDoc,
+        },
+        {
+          label: prose ? "Format Code Block" : "Format Document",
+          shortcut: "Ctrl Shift F",
+          action: formatActive,
+          disabled: !activeDoc || (!prose && !canFormat),
         },
         {
           label: "Find in Document",
