@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 export interface PaletteItem {
   id: string;
@@ -7,6 +7,9 @@ export interface PaletteItem {
   hint?: string;
   /** Second line: a matching excerpt, path, or description. */
   detail?: string;
+  /** Heading the row sits under. A heading is drawn wherever it changes, so
+   *  rows of one section must be adjacent. */
+  section?: string;
   run: () => void;
   /** Present on rows that stand for something deletable. The palette asks for
    *  a second click before calling it; deleting a document is irreversible. */
@@ -35,6 +38,26 @@ function TrashIcon() {
       <path d="M6.6 6.6v4.7M9.4 6.6v4.7" />
     </svg>
   );
+}
+
+/** Brightens every occurrence of the query, so a row says why it matched. */
+function Highlight({ text, query }: { text: string; query: string }) {
+  const q = query.trim().toLowerCase();
+  if (q.length < 2) return <>{text}</>;
+  const parts: JSX.Element[] = [];
+  const lower = text.toLowerCase();
+  let from = 0;
+  for (let at = lower.indexOf(q); at !== -1; at = lower.indexOf(q, from)) {
+    parts.push(<span key={`t${at}`}>{text.slice(from, at)}</span>);
+    parts.push(
+      <mark key={`m${at}`} className="rounded-sm bg-accent-dim text-text">
+        {text.slice(at, at + q.length)}
+      </mark>,
+    );
+    from = at + q.length;
+  }
+  parts.push(<span key="rest">{text.slice(from)}</span>);
+  return <>{parts}</>;
 }
 
 interface CommandPaletteProps {
@@ -134,57 +157,65 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
             <div className="px-2.5 py-3 text-[12px] text-muted">no matches</div>
           )}
           {items.map((item, index) => (
-            // A row is a container rather than one button: deletable rows
-            // carry a second control, and a button cannot sit inside a button.
-            <div
-              key={item.id}
-              data-active={index === cursor}
-              onMouseMove={() => {
-                if (index === cursor) return;
-                keyboardNav.current = false;
-                setCursor(index);
-                setArmed(null);
-              }}
-              className={`group flex w-full items-baseline gap-3 rounded-md px-2.5 py-[6px] ${
-                index === cursor ? "bg-raised" : ""
-              }`}
-            >
-              <button
-                onClick={() => run(item)}
-                className="flex min-w-0 flex-1 items-baseline text-left active:opacity-70"
+            <Fragment key={item.id}>
+              {item.section && item.section !== items[index - 1]?.section && (
+                <div className="px-2.5 pt-2.5 pb-1 text-[11px] text-muted first:pt-1">
+                  {item.section}
+                </div>
+              )}
+              {/* A row is a container rather than one button: deletable rows
+                  carry a second control, and a button cannot sit inside a button. */}
+              <div
+                data-active={index === cursor}
+                onMouseMove={() => {
+                  if (index === cursor) return;
+                  keyboardNav.current = false;
+                  setCursor(index);
+                  setArmed(null);
+                }}
+                className={`group flex w-full items-baseline gap-3 rounded-md px-2.5 py-[6px] ${
+                  index === cursor ? "bg-raised" : ""
+                }`}
               >
-                <span className="min-w-0 flex-1 truncate text-[12px] text-text">
-                  {item.label}
-                  {item.detail && (
-                    <span className="block truncate text-[11px] text-muted">{item.detail}</span>
-                  )}
-                </span>
-              </button>
-              {item.hint && (
-                <span className="shrink-0 text-[11px] text-muted">{item.hint}</span>
-              )}
-              {item.remove && (
-                // Held until the row is hovered or selected, so the list reads
-                // as a list of documents and not a list of delete buttons.
                 <button
-                  aria-label={
-                    armed === item.id ? `confirm delete ${item.label}` : `delete ${item.label}`
-                  }
-                  title="delete document (Ctrl D)"
-                  onClick={() => remove(item)}
-                  // Negative margin keeps a comfortable hit target from making
-                  // the row any taller than its text already makes it.
-                  className={`-my-1 flex h-6 shrink-0 items-center gap-1.5 self-center rounded-sm px-1.5 text-[11px] hover:bg-surface hover:text-text active:bg-pressed ${
-                    armed === item.id
-                      ? "bg-surface text-text"
-                      : `text-muted ${index === cursor ? "" : "invisible group-hover:visible"}`
-                  }`}
+                  onClick={() => run(item)}
+                  className="flex min-w-0 flex-1 items-baseline text-left active:opacity-70"
                 >
-                  {armed === item.id && "delete?"}
-                  <TrashIcon />
+                  <span className="min-w-0 flex-1 truncate text-[12px] text-text">
+                    <Highlight text={item.label} query={query} />
+                    {item.detail && (
+                      <span className="block truncate text-[11px] text-muted">
+                        <Highlight text={item.detail} query={query} />
+                      </span>
+                    )}
+                  </span>
                 </button>
-              )}
-            </div>
+                {item.hint && (
+                  <span className="shrink-0 text-[11px] text-muted">{item.hint}</span>
+                )}
+                {item.remove && (
+                  // Held until the row is hovered or selected, so the list reads
+                  // as a list of documents and not a list of delete buttons.
+                  <button
+                    aria-label={
+                      armed === item.id ? `confirm delete ${item.label}` : `delete ${item.label}`
+                    }
+                    title="delete document (Ctrl D)"
+                    onClick={() => remove(item)}
+                    // Negative margin keeps a comfortable hit target from making
+                    // the row any taller than its text already makes it.
+                    className={`-my-1 flex h-6 shrink-0 items-center gap-1.5 self-center rounded-sm px-1.5 text-[11px] hover:bg-surface hover:text-text active:bg-pressed ${
+                      armed === item.id
+                        ? "bg-surface text-text"
+                        : `text-muted ${index === cursor ? "" : "invisible group-hover:visible"}`
+                    }`}
+                  >
+                    {armed === item.id && "delete?"}
+                    <TrashIcon />
+                  </button>
+                )}
+              </div>
+            </Fragment>
           ))}
         </div>
       </div>

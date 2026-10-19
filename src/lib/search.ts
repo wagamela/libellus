@@ -49,3 +49,39 @@ export function searchDocs(docs: Doc[], rawQuery: string): Match[] {
     (a, b) => b.score - a.score || b.doc.updatedAt - a.doc.updatedAt,
   );
 }
+
+export interface LineHit {
+  doc: Doc;
+  /** 1-based, as the gutter shows it. */
+  line: number;
+  /** Where the match starts within `text`. */
+  column: number;
+  /** Offsets of the match in the whole body, ready to become a selection. */
+  from: number;
+  to: number;
+  text: string;
+}
+
+/**
+ * Every line, in every document, that contains the query — the full-text half
+ * of quick open. Most recently edited documents first, so the cap drops stale
+ * hits rather than fresh ones.
+ */
+export function searchLines(docs: Doc[], rawQuery: string, limit = 60): LineHit[] {
+  const query = rawQuery.trim().toLowerCase();
+  // One character matches nearly every line; it is noise, not a search.
+  if (query.length < 2) return [];
+  const hits: LineHit[] = [];
+  for (const doc of [...docs].sort((a, b) => b.updatedAt - a.updatedAt)) {
+    let offset = 0;
+    for (const [index, text] of doc.body.split("\n").entries()) {
+      const at = text.toLowerCase().indexOf(query);
+      if (at !== -1) {
+        hits.push({ doc, line: index + 1, column: at, from: offset + at, to: offset + at + query.length, text });
+        if (hits.length === limit) return hits;
+      }
+      offset += text.length + 1;
+    }
+  }
+  return hits;
+}

@@ -6,7 +6,8 @@ import { StatusBar } from "./components/StatusBar";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
 import { SecretsPanel } from "./components/SecretsPanel";
 import { ContextMenu, type ContextMenuState, type MenuAction } from "./components/ContextMenu";
-import { searchDocs } from "./lib/search";
+import { searchDocs, searchLines } from "./lib/search";
+import { EditorView } from "@codemirror/view";
 import { activeEditor } from "./lib/editor";
 import { blockAtCursor, codeBlockBody, formatBlock, insertCodeBlock } from "./lib/codeBlocks";
 import { detectCodeLanguage } from "./lib/detect";
@@ -376,22 +377,61 @@ export default function App() {
     [commands, copyCode, store],
   );
 
+  /** Opens a document with the match selected and scrolled to the middle. The
+   *  editor is keyed by document and loads its body in an effect, so wait a few
+   *  frames until the text under the match is the text that matched. */
+  const openAt = useCallback(
+    (id: string, from: number, to: number) => {
+      const expected = store.docs[id]?.body.slice(from, to);
+      store.openDoc(id);
+      const select = (frames: number) => {
+        const view = activeEditor();
+        if (!view || view.state.sliceDoc(from, to) !== expected) {
+          if (frames > 0) requestAnimationFrame(() => select(frames - 1));
+          return;
+        }
+        view.dispatch({
+          selection: { anchor: from, head: to },
+          effects: EditorView.scrollIntoView(from, { y: "center" }),
+        });
+        view.focus();
+      };
+      requestAnimationFrame(() => select(10));
+    },
+    [store],
+  );
+
   const buildOpen = useCallback(
-    (query: string): PaletteItem[] =>
-      searchDocs(Object.values(store.docs), query)
-        .sort((a, b) => b.score - a.score || b.doc.updatedAt - a.doc.updatedAt)
+    (query: string): PaletteItem[] => {
+      const all = Object.values(store.docs);
+      const searching = query.trim() !== "";
+      const docs = searchDocs(all, query)
+        // Body-only matches are listed line by line below, so here they would
+        // only repeat themselves.
+        .filter((match) => !searching || match.score > 25)
         .slice(0, 40)
-        .map(({ doc, excerpt }) => ({
+        .map<PaletteItem>(({ doc }) => ({
           id: doc.id,
           label: docLabel(doc),
-          detail: excerpt,
           hint: doc.kind === "note" ? "note" : doc.language,
+          section: searching ? "documents" : "recent",
           run: () => store.openDoc(doc.id),
           // Quick open is the only list of every document, so it is also where
           // one can be thrown away. The palette asks before it goes through.
           remove: () => store.deleteDoc(doc.id),
-        })),
-    [store],
+        }));
+      const lines = searchLines(all, query).map<PaletteItem>((hit) => ({
+        id: `${hit.doc.id}:${hit.line}`,
+        // A match far into a long line would be truncated out of sight.
+        label: hit.column > 40 ? `…${hit.text.slice(hit.column - 30).trim()}` : hit.text.trim(),
+        detail: docLabel(hit.doc),
+        hint: `line ${hit.line}`,
+        section: "in content",
+        run: () => openAt(hit.doc.id, hit.from, hit.to),
+      }));
+      return [...docs, ...lines];
+    },
+    [store, openAt],
   );
 
   const menus: Menu[] = [
@@ -719,7 +759,7 @@ export default function App() {
       />
       {palette && (
         <CommandPalette
-          placeholder={palette === "commands" ? "run a command…" : "open a note or snippet…"}
+          placeholder={palette === "commands" ? "run a command…" : "open or search notes and snippets…"}
           build={palette === "commands" ? buildCommands : buildOpen}
           onClose={() => setPalette(null)}
         />
