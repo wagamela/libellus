@@ -329,7 +329,8 @@
 /* The fence lines answer the pointer nowhere but on their own controls, so
    they do not pretend to be text under the cursor either. */
 .cm-editor .cm-code-open,
-.cm-editor .cm-code-close {
+.cm-editor .cm-code-close,
+.cm-editor .cm-code-spacer {
   cursor: default;
 }
 .cm-editor .cm-code-head {

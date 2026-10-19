@@ -7,12 +7,16 @@ import {
 } from "@codemirror/view";
 import {
   Annotation,
+  ChangeSet,
   EditorSelection,
   EditorState,
   StateField,
   type Extension,
+  type ChangeSpec,
+  type Line,
   type Range,
   type Text,
+  type TransactionSpec,
 } from "@codemirror/state";
 import type { Language } from "./types";
 import { detectCodeLanguage } from "./detect";
@@ -140,6 +144,19 @@ export function blocksIn(doc: Text): CodeBlock[] {
   return blocks;
 }
 
+/**
+ * The empty line every closed block keeps below it. Without it the next block's
+ * header would sit flush against this one's closing fence and the two would
+ * read as a single surface, so it is part of the block's frame: never typed on,
+ * selected or deleted. `fenceGuard` puts one back whenever an edit leaves a
+ * block without it.
+ */
+function spacerLine(doc: Text, block: CodeBlock): Line | null {
+  if (!block.closed || block.endLine >= doc.lines) return null;
+  const line = doc.line(block.endLine + 1);
+  return line.text === "" ? line : null;
+}
+
 /** The block containing `pos`, fences included, or null. */
 export function blockAt(state: EditorState, pos: number): CodeBlock | null {
   for (const block of blocksIn(state.doc)) {
@@ -191,7 +208,7 @@ export function insertCodeBlock(language: () => Language | null): Command {
     // `codeHighlight.ts`), and a language guessed by the editor is better than
     // one stamped on the fence before there is any code to stamp it for.
     const open = "```" + (language() ?? "");
-    // Spacing: blank line after block is uneditable (two newlines: one for fence, one for blank)
+    // The block's spacer line, and a line below it to carry on writing on.
     const tail = "\n\n";
     const insert = `${lead}${open}\n${content}\n\`\`\`${tail}`;
     view.dispatch({
@@ -1258,6 +1275,8 @@ function build(state: EditorState): DecorationSet {
       ranges.push(
         Decoration.mark({ class: "cm-code-fence" }).range(closeLine.from, closeLine.to),
       );
+      const spacer = spacerLine(state.doc, block);
+      if (spacer) ranges.push(Decoration.line({ class: "cm-code-spacer" }).range(spacer.from));
     }
   }
   return Decoration.set(ranges, true);
@@ -1300,11 +1319,11 @@ function fenceGuards(doc: Text): { outer: [number, number]; fences: [number, num
     let end = block.bodyTo;
     if (block.closed) {
       const close = doc.line(block.endLine);
-      fences.push([Math.max(close.from - 1, 0), close.to]);
-      // Protect the blank line after closing fence: it's from close.to to close.to+2
-      // (one newline to end the fence line, one newline for the blank line)
-      fences.push([close.to, Math.min(close.to + 2, doc.length)]);
-      end = close.to + 2;
+      // The spacer goes with the closing fence, newline included, so the
+      // backspace that would join the next line up into it is caught too.
+      const spacer = spacerLine(doc, block);
+      fences.push([Math.max(close.from - 1, 0), spacer ? Math.min(spacer.to + 1, doc.length) : close.to]);
+      end = close.to;
     }
     return { outer: [block.openFrom, end], fences };
   });
@@ -1316,17 +1335,36 @@ function pastLine(doc: Text, lineNumber: number, forward: boolean): number {
   return forward ? Math.min(line.to + 1, doc.length) : Math.max(line.from - 1, 0);
 }
 
-/** True when `pos` sits on either fence line of a block. */
+/** True when `pos` sits on either fence line of a block, or on its spacer. */
 function onFenceLine(state: EditorState, pos: number): boolean {
   for (const block of blocksIn(state.doc)) {
     const open = state.doc.line(block.startLine);
     if (pos >= open.from && pos <= open.to) return true;
     if (block.closed) {
       const close = state.doc.line(block.endLine);
-      if (pos >= close.from && pos <= close.to) return true;
+      const end = spacerLine(state.doc, block)?.to ?? close.to;
+      if (pos >= close.from && pos <= end) return true;
     }
   }
   return false;
+}
+
+/** What has to be inserted so every closed block has its spacer and a line
+ *  below that to write on. */
+function missingSpacers(doc: Text): ChangeSpec[] {
+  const changes: ChangeSpec[] = [];
+  for (const block of blocksIn(doc)) {
+    if (!block.closed) continue;
+    const close = doc.line(block.endLine);
+    if (block.endLine === doc.lines) {
+      changes.push({ from: close.to, insert: "\n\n" });
+    } else if (doc.line(block.endLine + 1).text !== "") {
+      changes.push({ from: close.to, insert: "\n" });
+    } else if (block.endLine + 1 === doc.lines) {
+      changes.push({ from: doc.length, insert: "\n" });
+    }
+  }
+  return changes;
 }
 
 /** True when the browser has put the caret on a fence line on its own. It can:
@@ -1337,7 +1375,7 @@ function domCaretOnFence(view: EditorView): boolean {
   const node = selection?.focusNode ?? null;
   if (!node) return false;
   const element = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
-  return !!element?.closest(".cm-code-open, .cm-code-close");
+  return !!element?.closest(".cm-code-open, .cm-code-close, .cm-code-spacer");
 }
 
 /** The header's own field and copy control; events there are theirs. */
@@ -1401,34 +1439,57 @@ const fenceGuard = EditorState.transactionFilter.of((tr) => {
     if (blocked) return [];
   }
 
-  // The caret may cross a fence line but never rest on one: it is pushed out
-  // the side it arrived from, so walking down out of a block lands below it
-  // and walking up into one lands at the end of the code.
-  const head = tr.newSelection.main.head;
-  if (!tr.newSelection.main.empty) return tr;
-  const doc = tr.newDoc;
+  // An edit that leaves a block without its spacer gets one back in the same
+  // transaction, so undo takes both away together.
+  const specs: TransactionSpec[] = [tr];
+  let doc = tr.newDoc;
+  let selection = tr.newSelection.main;
+  let previous = tr.changes.mapPos(tr.startState.selection.main.head);
+  if (tr.docChanged) {
+    const spacing = missingSpacers(doc);
+    if (spacing.length) {
+      const set = ChangeSet.of(spacing, doc.length);
+      // `sequential` because these positions were worked out in `tr.newDoc`.
+      specs.push({ changes: set, sequential: true });
+      doc = set.apply(doc);
+      selection = selection.map(set);
+      previous = set.mapPos(previous);
+    }
+  }
+
+  // The caret may cross a fence line or a spacer but never rest on one: it is
+  // pushed out the side it arrived from, so walking down out of a block lands
+  // below its spacer and walking up into one lands at the end of the code. The
+  // head of a selection is pushed the same way, so a selection never ends there.
+  const head = selection.head;
+  const forward = head >= previous;
   for (const block of blocksIn(doc)) {
     const open = doc.line(block.startLine);
-    const close = block.closed ? doc.line(block.endLine) : null;
-    const on =
-      head >= open.from && head <= open.to
-        ? block.startLine
-        : close && head >= close.from && head <= close.to
-          ? block.endLine
-          : null;
-    if (on === null) continue;
-    const forward = head >= tr.changes.mapPos(tr.startState.selection.main.head);
-    // `sequential` because this position was worked out in `tr.newDoc`. Without
-    // it the appended spec is read against the document the transaction started
-    // from and mapped forward, so any edit that grows the document past that
-    // length — pasting a block into an empty note, say — asks for a position
-    // the old document never had and the whole edit throws.
-    return [
-      tr,
-      { selection: EditorSelection.cursor(pastLine(doc, on, forward)), sequential: true },
-    ];
+    let target: number | null = null;
+    if (head >= open.from && head <= open.to) {
+      target = pastLine(doc, block.startLine, forward);
+    } else if (block.closed) {
+      const close = doc.line(block.endLine);
+      const end = spacerLine(doc, block)?.to ?? close.to;
+      if (head >= close.from && head <= end) {
+        target = forward ? Math.min(end + 1, doc.length) : Math.max(close.from - 1, 0);
+      }
+    }
+    if (target === null) continue;
+    // `sequential` for the same reason: without it the appended spec is read
+    // against the document the transaction started from and mapped forward, so
+    // any edit that grows the document past that length — pasting a block into
+    // an empty note, say — asks for a position the old document never had and
+    // the whole edit throws.
+    specs.push({
+      selection: selection.empty
+        ? EditorSelection.cursor(target)
+        : EditorSelection.range(selection.anchor, target),
+      sequential: true,
+    });
+    break;
   }
-  return tr;
+  return specs.length === 1 ? tr : specs;
 });
 
 /** Decorations and the read-only fences; the Ctrl Alt C binding lives in
