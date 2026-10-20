@@ -5,6 +5,7 @@ import { Editor } from "./components/Editor";
 import { StatusBar } from "./components/StatusBar";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
 import { SecretsPanel } from "./components/SecretsPanel";
+import { ProjectsPanel } from "./components/ProjectsPanel";
 import { ContextMenu, type ContextMenuState, type MenuAction } from "./components/ContextMenu";
 import { searchDocs, searchLines } from "./lib/search";
 import { EditorView } from "@codemirror/view";
@@ -16,12 +17,13 @@ import { toggleEmphasis, type Emphasis } from "./lib/emphasis";
 import { LANGUAGES, type Doc } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
 
-type PaletteMode = "commands" | "open" | "projects" | "move" | null;
+type PaletteMode = "commands" | "open" | "move" | null;
 
 export default function App() {
   const store = useWorkspace();
   const [palette, setPalette] = useState<PaletteMode>(null);
   const [secretsOpen, setSecretsOpen] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   /** The document the "move" palette is filing away. */
@@ -225,15 +227,22 @@ export default function App() {
       if (key === "k") {
         event.preventDefault();
         setSecretsOpen(false);
+        setProjectsOpen(false);
         setPalette((p) => (p === "commands" ? null : "commands"));
+      } else if (key === "p" && event.shiftKey) {
+        event.preventDefault();
+        setPalette(null);
+        setSecretsOpen(false);
+        setProjectsOpen((open) => !open);
       } else if (key === "p") {
         event.preventDefault();
         setSecretsOpen(false);
-        const mode = event.shiftKey ? "projects" : "open";
-        setPalette((p) => (p === mode ? null : mode));
+        setProjectsOpen(false);
+        setPalette((p) => (p === "open" ? null : "open"));
       } else if (key === "e" && !event.shiftKey && !event.altKey) {
         event.preventDefault();
         setPalette(null);
+        setProjectsOpen(false);
         setSecretsOpen((open) => !open);
       } else if (key === "n") {
         event.preventDefault();
@@ -291,9 +300,9 @@ export default function App() {
       { id: "secrets", label: "secrets", hint: "Ctrl E", run: () => setSecretsOpen(true) },
       {
         id: "projects",
-        label: "switch, create or rename project…",
+        label: "projects",
         hint: "Ctrl Shift P",
-        run: () => setPalette("projects"),
+        run: () => setProjectsOpen(true),
       },
       { id: "save", label: "save", hint: "Ctrl S", run: save },
       { id: "save-as", label: "save as…", hint: "Ctrl Shift S", run: saveAs },
@@ -471,46 +480,6 @@ export default function App() {
     [store, openAt, activeProject, projectName],
   );
 
-  /** One list for every project action: pick a row to switch, or type a name
-   *  to create a project or rename the current one. */
-  const buildProjects = useCallback(
-    (query: string): PaletteItem[] => {
-      const name = query.trim();
-      const q = name.toLowerCase();
-      const count = (id: string | null) =>
-        Object.values(store.docs).filter((d) => d.projectId === id).length;
-      const items: PaletteItem[] = [
-        {
-          id: "no-project",
-          label: "no project",
-          detail: "documents and secrets that belong to no project",
-          hint: store.activeProject === null ? "current" : `${count(null)} documents`,
-          run: () => store.setActiveProject(null),
-        },
-        ...store.projects.map<PaletteItem>((project) => ({
-          id: project.id,
-          label: project.name,
-          hint: project.id === store.activeProject ? "current" : `${count(project.id)} documents`,
-          run: () => store.setActiveProject(project.id),
-          // Only the grouping goes: its documents and secrets are kept.
-          remove: () => store.deleteProject(project.id),
-        })),
-      ].filter((item) => item.label.toLowerCase().includes(q));
-      if (name && !store.projects.some((p) => p.name.toLowerCase() === q)) {
-        items.push({ id: "create", label: `create project: ${name}`, run: () => store.createProject(name) });
-        if (activeProject) {
-          items.push({
-            id: "rename",
-            label: `rename ${activeProject.name} to: ${name}`,
-            run: () => store.renameProject(activeProject.id, name),
-          });
-        }
-      }
-      return items;
-    },
-    [store, activeProject],
-  );
-
   const buildMove = useCallback(
     (query: string): PaletteItem[] => {
       const doc = moving ? store.docs[moving] : undefined;
@@ -638,7 +607,7 @@ export default function App() {
       items: [
         { label: "Command Palette", shortcut: "Ctrl K", action: () => setPalette("commands") },
         { label: "Secrets", shortcut: "Ctrl E", action: () => setSecretsOpen(true) },
-        { label: "Projects…", shortcut: "Ctrl Shift P", action: () => setPalette("projects") },
+        { label: "Projects…", shortcut: "Ctrl Shift P", action: () => setProjectsOpen(true) },
         {
           label: "Next Tab",
           shortcut: "Ctrl Tab",
@@ -867,28 +836,18 @@ export default function App() {
         status={store.status}
         docCount={Object.keys(store.docs).length}
         project={activeProject?.name ?? null}
-        onProjects={() => setPalette("projects")}
+        onProjects={() => setProjectsOpen(true)}
       />
       {palette && (
         <CommandPalette
           placeholder={
             palette === "commands"
               ? "run a command…"
-              : palette === "projects"
-                ? "switch project, or type a name to create or rename…"
-                : palette === "move"
-                  ? "move to project…"
-                  : "open or search notes and snippets…"
+              : palette === "move"
+                ? "move to project…"
+                : "open or search notes and snippets…"
           }
-          build={
-            palette === "commands"
-              ? buildCommands
-              : palette === "projects"
-                ? buildProjects
-                : palette === "move"
-                  ? buildMove
-                  : buildOpen
-          }
+          build={palette === "commands" ? buildCommands : palette === "move" ? buildMove : buildOpen}
           onClose={() => setPalette(null)}
         />
       )}
@@ -896,6 +855,14 @@ export default function App() {
         <SecretsPanel
           onClose={() => {
             setSecretsOpen(false);
+            focusEditor();
+          }}
+        />
+      )}
+      {projectsOpen && (
+        <ProjectsPanel
+          onClose={() => {
+            setProjectsOpen(false);
             focusEditor();
           }}
         />
