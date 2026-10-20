@@ -12,7 +12,7 @@ export interface PaletteItem {
   section?: string;
   run: () => void;
   /** Present on rows that stand for something deletable. The palette asks for
-   *  a second click before calling it; deleting a document is irreversible. */
+   *  a second click before calling it; deleting is irreversible. */
   remove?: () => void;
 }
 
@@ -200,7 +200,7 @@ export function CommandPalette({ placeholder, build, onClose }: CommandPalettePr
                     aria-label={
                       armed === item.id ? `confirm delete ${item.label}` : `delete ${item.label}`
                     }
-                    title="delete document (Ctrl D)"
+                    title="delete (Ctrl D)"
                     onClick={() => remove(item)}
                     // Negative margin keeps a comfortable hit target from making
                     // the row any taller than its text already makes it.

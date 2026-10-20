@@ -19,16 +19,23 @@ export function StatusBar({
   doc,
   status,
   docCount,
+  project,
+  onProjects,
 }: {
   doc: Doc | null;
   status: SaveStatus;
   docCount: number;
+  project: string | null;
+  onProjects: () => void;
 }) {
   // Counted rather than split: this runs on every keystroke, and splitting
   // allocates an array the size of the document each time.
   const lines = doc ? countLines(doc.body) : 0;
   return (
     <div className="flex h-6 shrink-0 items-center gap-4 bg-chrome px-3 text-[11px] text-muted">
+      <button title="projects (Ctrl Shift P)" onClick={onProjects} className="hover:text-text">
+        {project ?? "no project"}
+      </button>
       <span>{doc ? doc.language : "no document"}</span>
       {doc && (
         <>

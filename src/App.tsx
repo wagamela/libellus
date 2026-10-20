@@ -13,10 +13,10 @@ import { blockAtCursor, codeBlockBody, formatBlock, insertCodeBlock } from "./li
 import { detectCodeLanguage } from "./lib/detect";
 import { canFormatLanguage, formatCode } from "./lib/format";
 import { toggleEmphasis, type Emphasis } from "./lib/emphasis";
-import { LANGUAGES } from "./lib/types";
+import { LANGUAGES, type Doc } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
 
-type PaletteMode = "commands" | "open" | null;
+type PaletteMode = "commands" | "open" | "projects" | null;
 
 export default function App() {
   const store = useWorkspace();
@@ -37,6 +37,11 @@ export default function App() {
   const activeDoc = store.activeTab ? store.docs[store.activeTab] ?? null : null;
   const armed = confirmDelete !== null && confirmDelete === store.activeTab;
   const tabs = store.openTabs.map((id) => store.docs[id]).filter(Boolean);
+  const activeProject = store.projects.find((p) => p.id === store.activeProject) ?? null;
+  const projectName = useCallback(
+    (id: string | null) => store.projects.find((p) => p.id === id)?.name ?? null,
+    [store.projects],
+  );
 
   const focusEditor = useCallback(() => {
     document.querySelector<HTMLElement>(".cm-content")?.focus();
@@ -217,7 +222,8 @@ export default function App() {
       } else if (key === "p") {
         event.preventDefault();
         setSecretsOpen(false);
-        setPalette((p) => (p === "open" ? null : "open"));
+        const mode = event.shiftKey ? "projects" : "open";
+        setPalette((p) => (p === mode ? null : mode));
       } else if (key === "e" && !event.shiftKey && !event.altKey) {
         event.preventDefault();
         setPalette(null);
@@ -276,6 +282,12 @@ export default function App() {
       { id: "snippet", label: "new snippet", hint: "Ctrl Shift N", run: newSnippet },
       { id: "open", label: "quick open document", hint: "Ctrl P", run: () => setPalette("open") },
       { id: "secrets", label: "secrets", hint: "Ctrl E", run: () => setSecretsOpen(true) },
+      {
+        id: "projects",
+        label: "switch, create or rename project…",
+        hint: "Ctrl Shift P",
+        run: () => setPalette("projects"),
+      },
       { id: "save", label: "save", hint: "Ctrl S", run: save },
       { id: "save-as", label: "save as…", hint: "Ctrl Shift S", run: saveAs },
       { id: "code", label: "insert code block", hint: "Ctrl Alt C", run: insertCode },
@@ -405,16 +417,28 @@ export default function App() {
     (query: string): PaletteItem[] => {
       const all = Object.values(store.docs);
       const searching = query.trim() !== "";
-      const docs = searchDocs(all, query)
+      const current = store.activeProject;
+      const inCurrent = (doc: Doc) => current !== null && doc.projectId === current;
+      const matches = searchDocs(all, query)
         // Body-only matches are listed line by line below, so here they would
         // only repeat themselves.
-        .filter((match) => !searching || match.score > 25)
+        .filter((match) => !searching || match.score > 25);
+      // The active project leads; everything else is still one keystroke away
+      // below it rather than hidden, so switching project never loses a document.
+      const docs = [...matches.filter((m) => inCurrent(m.doc)), ...matches.filter((m) => !inCurrent(m.doc))]
         .slice(0, 40)
         .map<PaletteItem>(({ doc }) => ({
           id: doc.id,
           label: docLabel(doc),
+          detail: inCurrent(doc) ? undefined : projectName(doc.projectId) ?? undefined,
           hint: doc.kind === "note" ? "note" : doc.language,
-          section: searching ? "documents" : "recent",
+          section: inCurrent(doc)
+            ? activeProject!.name
+            : current !== null
+              ? "elsewhere"
+              : searching
+                ? "documents"
+                : "recent",
           run: () => store.openDoc(doc.id),
           // Quick open is the only list of every document, so it is also where
           // one can be thrown away. The palette asks before it goes through.
@@ -431,7 +455,47 @@ export default function App() {
       }));
       return [...docs, ...lines];
     },
-    [store, openAt],
+    [store, openAt, activeProject, projectName],
+  );
+
+  /** One list for every project action: pick a row to switch, or type a name
+   *  to create a project or rename the current one. */
+  const buildProjects = useCallback(
+    (query: string): PaletteItem[] => {
+      const name = query.trim();
+      const q = name.toLowerCase();
+      const count = (id: string | null) =>
+        Object.values(store.docs).filter((d) => d.projectId === id).length;
+      const items: PaletteItem[] = [
+        {
+          id: "no-project",
+          label: "no project",
+          detail: "documents and secrets that belong to no project",
+          hint: store.activeProject === null ? "current" : `${count(null)} documents`,
+          run: () => store.setActiveProject(null),
+        },
+        ...store.projects.map<PaletteItem>((project) => ({
+          id: project.id,
+          label: project.name,
+          hint: project.id === store.activeProject ? "current" : `${count(project.id)} documents`,
+          run: () => store.setActiveProject(project.id),
+          // Only the grouping goes: its documents and secrets are kept.
+          remove: () => store.deleteProject(project.id),
+        })),
+      ].filter((item) => item.label.toLowerCase().includes(q));
+      if (name && !store.projects.some((p) => p.name.toLowerCase() === q)) {
+        items.push({ id: "create", label: `create project: ${name}`, run: () => store.createProject(name) });
+        if (activeProject) {
+          items.push({
+            id: "rename",
+            label: `rename ${activeProject.name} to: ${name}`,
+            run: () => store.renameProject(activeProject.id, name),
+          });
+        }
+      }
+      return items;
+    },
+    [store, activeProject],
   );
 
   const menus: Menu[] = [
@@ -530,6 +594,7 @@ export default function App() {
       items: [
         { label: "Command Palette", shortcut: "Ctrl K", action: () => setPalette("commands") },
         { label: "Secrets", shortcut: "Ctrl E", action: () => setSecretsOpen(true) },
+        { label: "Projects…", shortcut: "Ctrl Shift P", action: () => setPalette("projects") },
         {
           label: "Next Tab",
           shortcut: "Ctrl Tab",
@@ -756,11 +821,19 @@ export default function App() {
         doc={activeDoc}
         status={store.status}
         docCount={Object.keys(store.docs).length}
+        project={activeProject?.name ?? null}
+        onProjects={() => setPalette("projects")}
       />
       {palette && (
         <CommandPalette
-          placeholder={palette === "commands" ? "run a command…" : "open or search notes and snippets…"}
-          build={palette === "commands" ? buildCommands : buildOpen}
+          placeholder={
+            palette === "commands"
+              ? "run a command…"
+              : palette === "projects"
+                ? "switch project, or type a name to create or rename…"
+                : "open or search notes and snippets…"
+          }
+          build={palette === "commands" ? buildCommands : palette === "projects" ? buildProjects : buildOpen}
           onClose={() => setPalette(null)}
         />
       )}
