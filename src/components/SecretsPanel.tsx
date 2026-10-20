@@ -21,7 +21,9 @@ function message(error: unknown): string {
  */
 export function SecretsPanel({ onClose }: { onClose: () => void }) {
   const secrets = useWorkspace((s) => s.secrets);
-  const { createSecret, updateSecret, deleteSecret } = useWorkspace.getState();
+  const projects = useWorkspace((s) => s.projects);
+  const activeProject = useWorkspace((s) => s.activeProject);
+  const { createSecret, updateSecret, deleteSecret, moveSecret } = useWorkspace.getState();
   const [filter, setFilter] = useState("");
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<Editing>(null);
@@ -35,7 +37,14 @@ export function SecretsPanel({ onClose }: { onClose: () => void }) {
 
   const shown = secrets
     .filter((s) => s.name.toLowerCase().includes(filter.trim().toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    // The active project's secrets first; the rest stay reachable below.
+    .sort(
+      (a, b) =>
+        Number(b.projectId === activeProject) - Number(a.projectId === activeProject) ||
+        a.name.localeCompare(b.name),
+    );
+  const projectName = (id: string | null) =>
+    projects.find((p) => p.id === id)?.name ?? "no project";
 
   const attempt = async (work: () => Promise<void>) => {
     setError(null);
@@ -149,11 +158,23 @@ export function SecretsPanel({ onClose }: { onClose: () => void }) {
             >
               <span className="min-w-0 flex-1 truncate text-[12px] text-text">
                 {secret.name}
+                {secret.projectId !== activeProject && (
+                  <span className="pl-2 text-[11px] text-muted">{projectName(secret.projectId)}</span>
+                )}
                 <span className="block truncate text-[11px] text-muted select-text">
                   {secret.id in revealed ? revealed[secret.id] : "••••••••"}
                 </span>
               </span>
               <span className="flex shrink-0 gap-1 self-center">
+                {secret.projectId !== activeProject && (
+                  <button
+                    className={action}
+                    title={`move to ${projectName(activeProject)}`}
+                    onClick={() => moveSecret(secret.id, activeProject)}
+                  >
+                    move here
+                  </button>
+                )}
                 <button className={action} onClick={() => void copy(secret.id, secret.name)}>
                   copy
                 </button>
