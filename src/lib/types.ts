@@ -24,6 +24,8 @@ export interface Doc {
   body: string;
   /** While true the title follows the first line of the body. */
   autoTitle: boolean;
+  /** The project the document belongs to; null when it belongs to none. */
+  projectId: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -36,23 +38,40 @@ export interface Doc {
 export interface SecretMeta {
   id: string;
   name: string;
+  projectId: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * A named group of notes, snippets and secrets. Deliberately nothing more: no
+ * nesting, no status, no members — organisation, not project management.
+ */
+export interface Project {
+  id: string;
+  name: string;
   createdAt: number;
   updatedAt: number;
 }
 
 /** Everything libellus persists. Versioned so early stores can be migrated. */
 export interface Store {
-  version: 2;
+  version: 3;
   docs: Doc[];
   secrets: SecretMeta[];
+  projects: Project[];
+  /** The project new documents and secrets land in, and quick open leads with. */
+  activeProject: string | null;
   openTabs: string[];
   activeTab: string | null;
 }
 
 export const emptyStore: Store = {
-  version: 2,
+  version: 3,
   docs: [],
   secrets: [],
+  projects: [],
+  activeProject: null,
   openTabs: [],
   activeTab: null,
 };

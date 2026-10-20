@@ -4,7 +4,7 @@ import { saveDocumentAs } from "../lib/files";
 import { IMAGE_REF, deleteImage, imageRefs } from "../lib/images";
 import { isFenceLine } from "../lib/codeBlocks";
 import { eraseSecret, writeSecret } from "../lib/secrets";
-import { newId, type Doc, type DocKind, type Language, type SecretMeta } from "../lib/types";
+import { newId, type Doc, type DocKind, type Language, type Project, type SecretMeta } from "../lib/types";
 
 export type SaveStatus = "idle" | "modified" | "saving" | "saved" | "error";
 
@@ -26,6 +26,8 @@ interface WorkspaceState {
   closedTabs: ClosedTab[];
   /** Metadata only: values are in the OS credential store, see `lib/secrets`. */
   secrets: SecretMeta[];
+  projects: Project[];
+  activeProject: string | null;
 
   init: () => Promise<void>;
   createDoc: (kind: DocKind, seed?: Partial<Doc>) => string;
@@ -44,6 +46,12 @@ interface WorkspaceState {
   createSecret: (name: string, value: string) => Promise<void>;
   updateSecret: (id: string, patch: { name?: string; value?: string }) => Promise<void>;
   deleteSecret: (id: string) => Promise<void>;
+  createProject: (name: string) => string;
+  renameProject: (id: string, name: string) => void;
+  deleteProject: (id: string) => void;
+  setActiveProject: (id: string | null) => void;
+  moveDoc: (id: string, projectId: string | null) => void;
+  moveSecret: (id: string, projectId: string | null) => void;
 }
 
 const DEFAULT_LANGUAGE: Record<DocKind, Language> = {
@@ -101,6 +109,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     ready: false,
     closedTabs: [],
     secrets: [],
+    projects: [],
+    activeProject: null,
 
     async init() {
       const store = await loadStore();
@@ -112,7 +122,19 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const openTabs = store.openTabs.filter((id) => docs[id]);
       const restored =
         store.activeTab && docs[store.activeTab] ? store.activeTab : openTabs[0] ?? null;
-      set({ docs, order, openTabs, activeTab: restored, secrets: store.secrets, ready: true });
+      const activeProject = store.projects.some((p) => p.id === store.activeProject)
+        ? store.activeProject
+        : null;
+      set({
+        docs,
+        order,
+        openTabs,
+        activeTab: restored,
+        secrets: store.secrets,
+        projects: store.projects,
+        activeProject,
+        ready: true,
+      });
 
       // There is no landing page: the window always opens on a document the
       // user can type into. Failing a restored tab, that is the most recently
@@ -132,6 +154,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         language: seed?.language ?? DEFAULT_LANGUAGE[kind],
         body: seed?.body ?? "",
         autoTitle: seed?.autoTitle ?? true,
+        projectId: seed?.projectId ?? get().activeProject,
         createdAt: now,
         updatedAt: now,
       };
@@ -289,7 +312,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const id = newId();
       await writeSecret(id, value);
       const now = Date.now();
-      set({ secrets: [...get().secrets, { id, name: name.trim(), createdAt: now, updatedAt: now }] });
+      const secret = { id, name: name.trim(), projectId: get().activeProject, createdAt: now, updatedAt: now };
+      set({ secrets: [...get().secrets, secret] });
       await get().flush();
     },
 
@@ -311,15 +335,70 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       await get().flush();
     },
 
+    createProject(name) {
+      const id = newId();
+      const now = Date.now();
+      set({
+        projects: [...get().projects, { id, name: name.trim(), createdAt: now, updatedAt: now }],
+        activeProject: id,
+      });
+      schedule();
+      return id;
+    },
+
+    renameProject(id, name) {
+      const named = name.trim();
+      if (!named) return;
+      set({
+        projects: get().projects.map((p) =>
+          p.id === id ? { ...p, name: named, updatedAt: Date.now() } : p,
+        ),
+      });
+      schedule();
+    },
+
+    /** Removes the grouping only. Its documents and secrets are kept and
+     *  belong to no project afterwards: deleting a folder-like label must
+     *  never be the way content is lost. */
+    deleteProject(id) {
+      const docs: Record<string, Doc> = {};
+      for (const doc of Object.values(get().docs)) {
+        docs[doc.id] = doc.projectId === id ? { ...doc, projectId: null } : doc;
+      }
+      set({
+        docs,
+        secrets: get().secrets.map((s) => (s.projectId === id ? { ...s, projectId: null } : s)),
+        projects: get().projects.filter((p) => p.id !== id),
+        activeProject: get().activeProject === id ? null : get().activeProject,
+      });
+      void get().flush();
+    },
+
+    setActiveProject(id) {
+      set({ activeProject: id });
+      schedule();
+    },
+
+    moveDoc(id, projectId) {
+      touch(id, { projectId });
+    },
+
+    moveSecret(id, projectId) {
+      set({ secrets: get().secrets.map((s) => (s.id === id ? { ...s, projectId } : s)) });
+      void get().flush();
+    },
+
     async flush() {
       clearTimeout(saveTimer);
-      const { docs, secrets, openTabs, activeTab } = get();
+      const { docs, secrets, projects, activeProject, openTabs, activeTab } = get();
       set({ status: "saving" });
       try {
         await saveStore({
-          version: 2,
+          version: 3,
           docs: Object.values(docs),
           secrets,
+          projects,
+          activeProject,
           openTabs,
           activeTab,
         });

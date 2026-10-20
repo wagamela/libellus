@@ -8,6 +8,15 @@ const LOCAL_KEY = "libellus.store.v1";
 const MIGRATIONS: Record<number, (store: any) => any> = {
   // v2 adds secret metadata; a v1 store had no secrets.
   1: (store) => ({ ...store, version: 2, secrets: [] }),
+  // v3 adds projects; everything that existed before belongs to none.
+  2: (store) => ({
+    ...store,
+    version: 3,
+    projects: [],
+    activeProject: null,
+    docs: store.docs.map((d: any) => ({ ...d, projectId: null })),
+    secrets: store.secrets.map((s: any) => ({ ...s, projectId: null })),
+  }),
 };
 
 function migrate(store: any): Store | null {
@@ -36,7 +45,12 @@ export async function loadStore(): Promise<Store> {
       : window.localStorage.getItem(LOCAL_KEY);
     if (!raw) return { ...emptyStore };
     const parsed = migrate(JSON.parse(raw));
-    if (!parsed || !Array.isArray(parsed.docs) || !Array.isArray(parsed.secrets)) {
+    if (
+      !parsed ||
+      !Array.isArray(parsed.docs) ||
+      !Array.isArray(parsed.secrets) ||
+      !Array.isArray(parsed.projects)
+    ) {
       return { ...emptyStore };
     }
     return parsed;
