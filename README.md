@@ -94,7 +94,8 @@ shell and the editor. See `project_spec.md` for the full product scope and
   The projects panel lists every project beside what the selected one holds —
   its open tabs first, then its other documents, and a count of its secrets —
   so a project can be looked into before switching to it; Enter switches,
-  `Tab` crosses into its documents to open or close one, typing a new name
+  `Tab` crosses into its documents to open or close one, dragging a
+  document onto another project moves it there, typing a new name
   creates a project, `F2` renames and `Ctrl D` deletes. `Move to Project…` (File menu, palette, a tab's right-click menu) files a
   document elsewhere, and `move here` does the same for a secret. Deleting a
   project only removes the grouping: its documents and secrets are kept

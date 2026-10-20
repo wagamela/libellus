@@ -12,6 +12,25 @@ interface Row {
 
 type Column = "projects" | "docs";
 
+/** A document being dragged onto a project. Pointer events rather than HTML5
+ *  drag and drop, like the tab strip: the webview can claim native drops for
+ *  files, and this way the drag looks the same on every platform. */
+interface Drag {
+  doc: Doc;
+  startX: number;
+  startY: number;
+  x: number;
+  y: number;
+  /** A press only becomes a drag once it has travelled far enough, so a
+   *  click on a document still opens it. */
+  active: boolean;
+  /** The project row under the pointer: an id, null for "no project", or
+   *  undefined when it is over nothing that takes a drop. */
+  over?: string | null;
+}
+
+const DRAG_THRESHOLD = 4;
+
 /**
  * Projects at a glance: the list on the left, and whatever the selected one
  * holds on the right, its open tabs first. Selecting a project here only
@@ -24,7 +43,7 @@ export function ProjectsPanel({ onClose }: { onClose: () => void }) {
   const openTabs = useWorkspace((s) => s.openTabs);
   const activeTab = useWorkspace((s) => s.activeTab);
   const secrets = useWorkspace((s) => s.secrets);
-  const { createProject, renameProject, deleteProject, setActiveProject, openDoc, closeTab } =
+  const { createProject, renameProject, deleteProject, setActiveProject, openDoc, closeTab, moveDoc } =
     useWorkspace.getState();
 
   const [query, setQuery] = useState("");
@@ -33,6 +52,9 @@ export function ProjectsPanel({ onClose }: { onClose: () => void }) {
   const [docCursor, setDocCursor] = useState(0);
   const [armed, setArmed] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [drag, setDrag] = useState<Drag | null>(null);
+  /** Set when a press ended a drag, so the click that follows does not open. */
+  const dragged = useRef(false);
   const input = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -116,6 +138,30 @@ export function ProjectsPanel({ onClose }: { onClose: () => void }) {
     refocus();
   };
 
+  const dragMove = (event: React.PointerEvent) => {
+    if (!drag) return;
+    const { clientX: x, clientY: y } = event;
+    const active =
+      drag.active || Math.hypot(x - drag.startX, y - drag.startY) > DRAG_THRESHOLD;
+    const target = document
+      .elementFromPoint(x, y)
+      ?.closest<HTMLElement>("[data-project-row]")?.dataset.projectRow;
+    const over = target === undefined ? undefined : target === "none" ? null : target;
+    setDrag({ ...drag, x, y, active, over });
+  };
+
+  const dragEnd = () => {
+    if (!drag) return;
+    dragged.current = drag.active;
+    if (drag.active && drag.over !== undefined && drag.over !== drag.doc.projectId) {
+      moveDoc(drag.doc.id, drag.over);
+    }
+    setDrag(null);
+  };
+
+  const dropName = (id: string | null | undefined) =>
+    id === undefined ? null : id === null ? "no project" : projects.find((p) => p.id === id)?.name;
+
   const action =
     "rounded-sm px-1.5 py-0.5 text-[11px] text-muted hover:bg-surface hover:text-text active:bg-pressed";
 
@@ -142,7 +188,8 @@ export function ProjectsPanel({ onClose }: { onClose: () => void }) {
             const docs = column === "docs";
             if (event.key === "Escape") {
               event.stopPropagation();
-              if (docs) setColumn("projects");
+              if (drag) setDrag(null);
+              else if (docs) setColumn("projects");
               else onClose();
             } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               event.preventDefault();
@@ -182,9 +229,11 @@ export function ProjectsPanel({ onClose }: { onClose: () => void }) {
               const count = Object.values(docs).filter((d) => d.projectId === r.id).length;
               const current = !r.create && r.id === activeProject;
               const chosen = index === cursor;
+              const target = drag?.active && !r.create && drag.over === r.id;
               return (
                 <div
                   key={r.create ? "create" : r.id ?? "none"}
+                  data-project-row={r.create ? undefined : r.id ?? "none"}
                   onMouseDown={(event) => {
                     // Keeps the caret in the query field, so the keys go on working.
                     if (renaming !== r.id) event.preventDefault();
@@ -195,7 +244,13 @@ export function ProjectsPanel({ onClose }: { onClose: () => void }) {
                   }}
                   onDoubleClick={() => !r.create && r.id && setRenaming(r.id)}
                   className={`flex cursor-default items-baseline gap-3 rounded-md px-2.5 py-[6px] ${
-                    chosen ? (column === "projects" ? "bg-raised" : "bg-surface") : ""
+                    target
+                      ? "bg-accent-dim"
+                      : chosen
+                        ? column === "projects"
+                          ? "bg-raised"
+                          : "bg-surface"
+                        : ""
                   }`}
                 >
                   {renaming !== null && renaming === r.id ? (
@@ -276,12 +331,27 @@ export function ProjectsPanel({ onClose }: { onClose: () => void }) {
                     <div
                       data-active={chosen}
                       onMouseDown={(event) => event.preventDefault()}
+                      onPointerDown={(event) => {
+                        if (event.button !== 0) return;
+                        dragged.current = false;
+                        // Captured, so the drag keeps its moves and its release
+                        // wherever the pointer goes on the way to a project.
+                        event.currentTarget.setPointerCapture(event.pointerId);
+                        const { clientX: x, clientY: y } = event;
+                        setDrag({ doc, startX: x, startY: y, x, y, active: false });
+                      }}
+                      onPointerMove={dragMove}
+                      onPointerUp={dragEnd}
+                      onPointerCancel={() => setDrag(null)}
                       className={`group flex items-baseline gap-3 rounded-md px-2.5 py-[6px] hover:bg-raised ${
                         chosen ? "bg-raised" : ""
                       }`}
                     >
                       <button
-                        onClick={() => openAt(doc)}
+                        onClick={() => {
+                          if (dragged.current) dragged.current = false;
+                          else openAt(doc);
+                        }}
                         className="min-w-0 flex-1 truncate text-left text-[12px] text-text active:opacity-70"
                       >
                         {docLabel(doc)}
@@ -293,6 +363,7 @@ export function ProjectsPanel({ onClose }: { onClose: () => void }) {
                       {isOpen && (
                         <button
                           aria-label={`close ${docLabel(doc)}`}
+                          onPointerDown={(event) => event.stopPropagation()}
                           onClick={() => closeTab(doc.id)}
                           className={`-my-1 self-center ${action} ${
                             chosen ? "" : "invisible group-hover:visible"
@@ -314,8 +385,24 @@ export function ProjectsPanel({ onClose }: { onClose: () => void }) {
           <span>Tab {column === "docs" ? "projects" : "documents"}</span>
           <span>F2 rename</span>
           <span>Ctrl D delete</span>
+          <span>drag a document onto a project to move it</span>
         </div>
       </div>
+      {drag?.active && (
+        <div
+          className="pointer-events-none fixed z-110 rounded-md bg-raised px-2.5 py-1.5 text-[12px] text-text shadow-[0_8px_24px_#00000080]"
+          style={{ left: drag.x + 12, top: drag.y + 10 }}
+        >
+          {docLabel(drag.doc)}
+          <span className="block text-[11px] text-muted">
+            {drag.over === undefined
+              ? "drop on a project"
+              : drag.over === drag.doc.projectId
+                ? "already here"
+                : `move to ${dropName(drag.over)}`}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
