@@ -101,6 +101,13 @@ browser — there is no localStorage fallback for secrets. The workspace store a
 the keychain before the metadata. `SecretsPanel` is the only UI; secrets are not docs, not
 in search and not in save-as.
 
+**Projects.** `Store.projects` is a flat list of `Project` (id, name, timestamps);
+`Doc.projectId` and `SecretMeta.projectId` point into it, null for none. `Store.activeProject`
+is where new documents and secrets land and what quick open and the secrets panel list first —
+it scopes ordering, never visibility. Deleting a project unassigns its contents rather than
+deleting them. Keep it lightweight (spec §8): no nesting, no per-project settings, no
+project-management features.
+
 **Search.** `src/lib/search.ts` is an in-memory subsequence ranker over titles and bodies,
 deliberately simple until SQLite FTS replaces it.
 

@@ -86,11 +86,20 @@ shell and the editor. See `project_spec.md` for the full product scope and
   Rust side — it never enters the webview — and clears it again after 30
   seconds unless something else was copied since. Outside the desktop app
   secrets are unavailable rather than falling back to plaintext storage
+- Projects (`Ctrl Shift P`, also View > Projects, the command palette and the
+  project name at the left of the status bar): a flat, named group of notes,
+  snippets and secrets — no nesting, no statuses, nothing to manage. One project
+  is active at a time; new documents and secrets land in it, and quick open and
+  the secrets panel list its contents first with everything else still below.
+  Type a name in the project list to create a project or rename the current
+  one. `Move to Project…` (File menu, palette, a tab's right-click menu) files a
+  document elsewhere, and `move here` does the same for a secret. Deleting a
+  project only removes the grouping: its documents and secrets are kept
 - Fully offline: no network requests, no accounts, no telemetry
 
 ## Not in this version
 
-Projects, developer utilities (JSON/Base64/UUID/JWT/…), tags and
+Developer utilities (JSON/Base64/UUID/JWT/…), tags and
 SQLite FTS are specified but deliberately deferred. The storage layer is a
 single versioned JSON document behind `src/lib/storage.ts`, so SQLite can
 replace it without touching the UI.
@@ -120,6 +129,7 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 | Save as          | `Ctrl Shift S` |
 | Find in document | `Ctrl F`       |
 | Secrets          | `Ctrl E`       |
+| Projects         | `Ctrl Shift P` |
 | Bold             | `Ctrl B`       |
 | Italic           | `Ctrl I`       |
 | Underline        | `Ctrl U`       |
