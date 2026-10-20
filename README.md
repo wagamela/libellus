@@ -91,8 +91,11 @@ shell and the editor. See `project_spec.md` for the full product scope and
   snippets and secrets — no nesting, no statuses, nothing to manage. One project
   is active at a time; new documents and secrets land in it, and quick open and
   the secrets panel list its contents first with everything else still below.
-  Type a name in the project list to create a project or rename the current
-  one. `Move to Project…` (File menu, palette, a tab's right-click menu) files a
+  The projects panel lists every project beside what the selected one holds —
+  its open tabs first, then its other documents, and a count of its secrets —
+  so a project can be looked into before switching to it; Enter switches,
+  `Tab` crosses into its documents to open or close one, typing a new name
+  creates a project, `F2` renames and `Ctrl D` deletes. `Move to Project…` (File menu, palette, a tab's right-click menu) files a
   document elsewhere, and `move here` does the same for a secret. Deleting a
   project only removes the grouping: its documents and secrets are kept
 - Fully offline: no network requests, no accounts, no telemetry
@@ -149,7 +152,7 @@ tools and WebView2. Install Rust from https://rustup.rs if `cargo` is missing;
 ```text
 src/
   components/   MenuBar, ContextMenu (the shared menu panel), TabBar, Editor,
-                CommandPalette, SecretsPanel, StatusBar
+                CommandPalette, SecretsPanel, ProjectsPanel, StatusBar
   lib/          types, storage, secrets, images, code blocks, snippet language
                 detection and highlighting, prose emphasis, files, search,
                 editor theme and lazy language loading
