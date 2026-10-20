@@ -16,7 +16,7 @@ import { toggleEmphasis, type Emphasis } from "./lib/emphasis";
 import { LANGUAGES, type Doc } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
 
-type PaletteMode = "commands" | "open" | "projects" | null;
+type PaletteMode = "commands" | "open" | "projects" | "move" | null;
 
 export default function App() {
   const store = useWorkspace();
@@ -24,6 +24,8 @@ export default function App() {
   const [secretsOpen, setSecretsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  /** The document the "move" palette is filing away. */
+  const [moving, setMoving] = useState<string | null>(null);
   /** The menu at the pointer, if one is open. There is one in the app: what a
    *  right-click means is decided here, from what it landed on. */
   const [context, setContext] = useState<ContextMenuState | null>(null);
@@ -61,6 +63,11 @@ export default function App() {
     },
     [store, focusEditor],
   );
+  const moveToProject = useCallback((id: string | null) => {
+    if (!id) return;
+    setMoving(id);
+    setPalette("move");
+  }, []);
   const save = useCallback(() => void store.flush(), [store]);
   const saveAs = useCallback(() => {
     if (store.activeTab) void store.saveAs(store.activeTab);
@@ -310,6 +317,12 @@ export default function App() {
       },
       { id: "find", label: "find in document", hint: "Ctrl F", run: findInDoc },
       { id: "rename", label: "rename tab", hint: "F2", run: renameActive },
+      {
+        id: "move-project",
+        label: "move document to project…",
+        hint: activeDoc ? "" : "no document",
+        run: () => moveToProject(store.activeTab),
+      },
       { id: "close", label: "close tab", hint: "Ctrl W", run: closeActive },
       {
         id: "reopen",
@@ -338,7 +351,7 @@ export default function App() {
         run: () => moveActiveTab(1),
       },
     ],
-    [newNote, newSnippet, save, saveAs, findInDoc, insertCode, emphasise, formatActive, prose, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, armed, activeDoc, store],
+    [newNote, newSnippet, save, saveAs, findInDoc, insertCode, emphasise, formatActive, prose, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, moveToProject, armed, activeDoc, store],
   );
 
   const buildCommands = useCallback(
@@ -498,6 +511,32 @@ export default function App() {
     [store, activeProject],
   );
 
+  const buildMove = useCallback(
+    (query: string): PaletteItem[] => {
+      const doc = moving ? store.docs[moving] : undefined;
+      if (!doc) return [];
+      const name = query.trim();
+      const q = name.toLowerCase();
+      const items = [{ id: null, name: "no project" }, ...store.projects]
+        .filter((p) => p.name.toLowerCase().includes(q))
+        .map<PaletteItem>((p) => ({
+          id: p.id ?? "no-project",
+          label: p.name,
+          hint: doc.projectId === p.id ? "current" : "",
+          run: () => store.moveDoc(doc.id, p.id),
+        }));
+      if (name && !store.projects.some((p) => p.name.toLowerCase() === q)) {
+        items.push({
+          id: "create",
+          label: `create project: ${name}`,
+          run: () => store.moveDoc(doc.id, store.createProject(name)),
+        });
+      }
+      return items;
+    },
+    [store, moving],
+  );
+
   const menus: Menu[] = [
     {
       label: "File",
@@ -523,6 +562,11 @@ export default function App() {
           action: renameActive,
           disabled: !activeDoc,
           separatorBefore: true,
+        },
+        {
+          label: "Move to Project…",
+          action: () => moveToProject(store.activeTab),
+          disabled: !activeDoc,
         },
         {
           label: "Close Tab",
@@ -645,6 +689,7 @@ export default function App() {
         store.activate(id);
         const items: MenuAction[] = [
           { label: "rename", shortcut: "F2", action: () => setRenaming(id) },
+          { label: "move to project…", action: () => moveToProject(id) },
           { label: "close tab", shortcut: "Ctrl W", action: () => store.closeTab(id) },
           {
             label: "close other tabs",
@@ -759,7 +804,7 @@ export default function App() {
         ],
       };
     },
-    [store, closeOthers, reopenTab, cutSelection, copySelection, pasteIntoDoc, selectAllInDoc, emphasise, prose, insertCode, copyCode, findInDoc, save, newNote, newSnippet],
+    [store, closeOthers, moveToProject, reopenTab, cutSelection, copySelection, pasteIntoDoc, selectAllInDoc, emphasise, prose, insertCode, copyCode, findInDoc, save, newNote, newSnippet],
   );
 
   return (
@@ -831,9 +876,19 @@ export default function App() {
               ? "run a command…"
               : palette === "projects"
                 ? "switch project, or type a name to create or rename…"
-                : "open or search notes and snippets…"
+                : palette === "move"
+                  ? "move to project…"
+                  : "open or search notes and snippets…"
           }
-          build={palette === "commands" ? buildCommands : palette === "projects" ? buildProjects : buildOpen}
+          build={
+            palette === "commands"
+              ? buildCommands
+              : palette === "projects"
+                ? buildProjects
+                : palette === "move"
+                  ? buildMove
+                  : buildOpen
+          }
           onClose={() => setPalette(null)}
         />
       )}
