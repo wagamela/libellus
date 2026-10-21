@@ -28,7 +28,13 @@ shell and the editor. See `project_spec.md` for the full product scope and
 - Command palette (`Ctrl K`) and quick open with local search over titles and
   bodies (`Ctrl P`). Each quick-open row carries a delete control (`Ctrl D` on
   the highlighted row): it arms on the first press and deletes on the second,
-  and the palette stays open so several documents can be cleared in one pass
+  and the palette stays open so several documents can be cleared in one pass.
+  The palette also holds commands with no shortcut: `open project…` (switch or
+  create the active project), `new secret`, `search notes` / `search snippets`
+  (quick open narrowed to one kind), `generate uuid` (inserted at the caret),
+  and `format json`, `encode base64` / `decode base64`, which rewrite the
+  selection — else the code block under the caret, else a whole snippet — and
+  leave input they cannot read untouched
 - Code snippet areas inside any document (`Ctrl Alt C`): opens a fenced block
   with the caret inside it, or wraps the selected lines in one. The block is
   drawn as its own surface and the document itself stays plain markdown text
