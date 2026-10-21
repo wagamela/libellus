@@ -17,7 +17,7 @@ import { toggleEmphasis, type Emphasis } from "./lib/emphasis";
 import { LANGUAGES, type Doc } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
 
-type PaletteMode = "commands" | "open" | "move" | null;
+type PaletteMode = "commands" | "open" | "move" | "project" | null;
 
 export default function App() {
   const store = useWorkspace();
@@ -304,6 +304,12 @@ export default function App() {
         hint: "Ctrl Shift P",
         run: () => setProjectsOpen(true),
       },
+      {
+        id: "open-project",
+        label: "open project…",
+        hint: activeProject?.name ?? "",
+        run: () => setPalette("project"),
+      },
       { id: "save", label: "save", hint: "Ctrl S", run: save },
       { id: "save-as", label: "save as…", hint: "Ctrl Shift S", run: saveAs },
       { id: "code", label: "insert code block", hint: "Ctrl Alt C", run: insertCode },
@@ -360,7 +366,7 @@ export default function App() {
         run: () => moveActiveTab(1),
       },
     ],
-    [newNote, newSnippet, save, saveAs, findInDoc, insertCode, emphasise, formatActive, prose, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, moveToProject, armed, activeDoc, store],
+    [newNote, newSnippet, save, saveAs, findInDoc, insertCode, emphasise, formatActive, prose, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, moveToProject, armed, activeDoc, activeProject, store],
   );
 
   const buildCommands = useCallback(
@@ -504,6 +510,29 @@ export default function App() {
       return items;
     },
     [store, moving],
+  );
+
+  // Opening a project only makes it the active one: it decides where new work
+  // lands and what is listed first, never what can be reached.
+  const buildProject = useCallback(
+    (query: string): PaletteItem[] => {
+      const name = query.trim();
+      const q = name.toLowerCase();
+      const items = [{ id: null, name: "no project" }, ...store.projects]
+        .filter((p) => p.name.toLowerCase().includes(q))
+        .map<PaletteItem>((p) => ({
+          id: p.id ?? "no-project",
+          label: p.name,
+          hint: store.activeProject === p.id ? "current" : "",
+          run: () => store.setActiveProject(p.id),
+        }));
+      if (name && !store.projects.some((p) => p.name.toLowerCase() === q)) {
+        // Creating a project already makes it the active one.
+        items.push({ id: "create", label: `create project: ${name}`, run: () => store.createProject(name) });
+      }
+      return items;
+    },
+    [store],
   );
 
   const menus: Menu[] = [
@@ -845,9 +874,19 @@ export default function App() {
               ? "run a command…"
               : palette === "move"
                 ? "move to project…"
-                : "open or search notes and snippets…"
+                : palette === "project"
+                  ? "open project…"
+                  : "open or search notes and snippets…"
           }
-          build={palette === "commands" ? buildCommands : palette === "move" ? buildMove : buildOpen}
+          build={
+            palette === "commands"
+              ? buildCommands
+              : palette === "move"
+                ? buildMove
+                : palette === "project"
+                  ? buildProject
+                  : buildOpen
+          }
           onClose={() => setPalette(null)}
         />
       )}
