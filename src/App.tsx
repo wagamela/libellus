@@ -204,6 +204,12 @@ export default function App() {
     }
     focusEditor();
   }, [focusEditor]);
+  const insertUuid = useCallback(() => {
+    const view = activeEditor();
+    if (!view) return;
+    view.dispatch(view.state.replaceSelection(crypto.randomUUID()), { userEvent: "input" });
+    focusEditor();
+  }, [focusEditor]);
   const findInDoc = useCallback(() => {
     // CodeMirror owns in-document search; hand it the keystroke it expects.
     const content = document.querySelector<HTMLElement>(".cm-content");
@@ -334,6 +340,7 @@ export default function App() {
         run: formatActive,
       },
       { id: "find", label: "find in document", hint: "Ctrl F", run: findInDoc },
+      { id: "uuid", label: "generate uuid", hint: activeDoc ? "" : "no document", run: insertUuid },
       { id: "rename", label: "rename tab", hint: "F2", run: renameActive },
       {
         id: "move-project",
@@ -369,7 +376,7 @@ export default function App() {
         run: () => moveActiveTab(1),
       },
     ],
-    [newNote, newSnippet, save, saveAs, findInDoc, insertCode, emphasise, formatActive, prose, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, moveToProject, armed, activeDoc, activeProject, store],
+    [newNote, newSnippet, save, saveAs, findInDoc, insertUuid, insertCode, emphasise, formatActive, prose, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, moveToProject, armed, activeDoc, activeProject, store],
   );
 
   const buildCommands = useCallback(
