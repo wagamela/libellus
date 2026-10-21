@@ -17,7 +17,7 @@ import { toggleEmphasis, type Emphasis } from "./lib/emphasis";
 import { LANGUAGES, type Doc } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
 
-type PaletteMode = "commands" | "open" | "move" | "project" | null;
+type PaletteMode = "commands" | "open" | "notes" | "snippets" | "move" | "project" | null;
 
 export default function App() {
   const store = useWorkspace();
@@ -297,6 +297,8 @@ export default function App() {
       { id: "note", label: "new note", hint: "Ctrl N", run: newNote },
       { id: "snippet", label: "new snippet", hint: "Ctrl Shift N", run: newSnippet },
       { id: "open", label: "quick open document", hint: "Ctrl P", run: () => setPalette("open") },
+      { id: "search-notes", label: "search notes", run: () => setPalette("notes") },
+      { id: "search-snippets", label: "search snippets", run: () => setPalette("snippets") },
       { id: "secrets", label: "secrets", hint: "Ctrl E", run: () => setSecretsOpen(true) },
       { id: "new-secret", label: "new secret", run: () => setSecretsOpen("new") },
       {
@@ -444,7 +446,11 @@ export default function App() {
 
   const buildOpen = useCallback(
     (query: string): PaletteItem[] => {
-      const all = Object.values(store.docs);
+      // Quick open lists every document; the two search commands narrow it to
+      // one kind and are otherwise the same list.
+      const all = Object.values(store.docs).filter(
+        (doc) => palette === "open" || `${doc.kind}s` === palette,
+      );
       const searching = query.trim() !== "";
       const current = store.activeProject;
       const inCurrent = (doc: Doc) => current !== null && doc.projectId === current;
@@ -484,7 +490,7 @@ export default function App() {
       }));
       return [...docs, ...lines];
     },
-    [store, openAt, activeProject, projectName],
+    [store, openAt, activeProject, projectName, palette],
   );
 
   const buildMove = useCallback(
@@ -877,7 +883,9 @@ export default function App() {
                 ? "move to project…"
                 : palette === "project"
                   ? "open project…"
-                  : "open or search notes and snippets…"
+                  : palette === "open"
+                    ? "open or search notes and snippets…"
+                    : `search ${palette}…`
           }
           build={
             palette === "commands"
