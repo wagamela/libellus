@@ -15,6 +15,7 @@ import { detectCodeLanguage } from "./lib/detect";
 import { canFormatLanguage, formatCode } from "./lib/format";
 import { toggleEmphasis, type Emphasis } from "./lib/emphasis";
 import { decodeBase64, encodeBase64 } from "./lib/encode";
+import { jsonFormatter } from "./lib/formatters/json";
 import { LANGUAGES, type Doc } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
 
@@ -372,6 +373,9 @@ export default function App() {
         run: formatActive,
       },
       { id: "find", label: "find in document", hint: "Ctrl F", run: findInDoc },
+      // Unlike "format", this does not wait for the code to be recognised:
+      // selected JSON is formatted as JSON wherever it sits.
+      { id: "format-json", label: "format json", run: () => transformText((t) => jsonFormatter.format(t)) },
       { id: "base64-encode", label: "encode base64", run: () => transformText(encodeBase64) },
       { id: "base64-decode", label: "decode base64", run: () => transformText(decodeBase64) },
       { id: "uuid", label: "generate uuid", hint: activeDoc ? "" : "no document", run: insertUuid },
