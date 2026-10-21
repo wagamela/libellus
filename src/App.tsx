@@ -22,7 +22,7 @@ type PaletteMode = "commands" | "open" | "move" | "project" | null;
 export default function App() {
   const store = useWorkspace();
   const [palette, setPalette] = useState<PaletteMode>(null);
-  const [secretsOpen, setSecretsOpen] = useState(false);
+  const [secretsOpen, setSecretsOpen] = useState<boolean | "new">(false);
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -298,6 +298,7 @@ export default function App() {
       { id: "snippet", label: "new snippet", hint: "Ctrl Shift N", run: newSnippet },
       { id: "open", label: "quick open document", hint: "Ctrl P", run: () => setPalette("open") },
       { id: "secrets", label: "secrets", hint: "Ctrl E", run: () => setSecretsOpen(true) },
+      { id: "new-secret", label: "new secret", run: () => setSecretsOpen("new") },
       {
         id: "projects",
         label: "projects",
@@ -892,6 +893,7 @@ export default function App() {
       )}
       {secretsOpen && (
         <SecretsPanel
+          startNew={secretsOpen === "new"}
           onClose={() => {
             setSecretsOpen(false);
             focusEditor();

@@ -19,14 +19,15 @@ function message(error: unknown): string {
  * not appear anywhere a note or snippet can. A revealed value lives in this
  * component's state only and is gone when the panel closes.
  */
-export function SecretsPanel({ onClose }: { onClose: () => void }) {
+export function SecretsPanel({ onClose, startNew = false }: { onClose: () => void; startNew?: boolean }) {
   const secrets = useWorkspace((s) => s.secrets);
   const projects = useWorkspace((s) => s.projects);
   const activeProject = useWorkspace((s) => s.activeProject);
   const { createSecret, updateSecret, deleteSecret, moveSecret } = useWorkspace.getState();
   const [filter, setFilter] = useState("");
   const [revealed, setRevealed] = useState<Record<string, string>>({});
-  const [editing, setEditing] = useState<Editing>(null);
+  // Opened by "new secret", the panel starts on the form rather than the list.
+  const [editing, setEditing] = useState<Editing>(startNew ? NEW : null);
   const [name, setName] = useState("");
   const [value, setValue] = useState("");
   const [armed, setArmed] = useState<string | null>(null);
