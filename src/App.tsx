@@ -14,6 +14,7 @@ import { blockAtCursor, codeBlockBody, formatBlock, insertCodeBlock } from "./li
 import { detectCodeLanguage } from "./lib/detect";
 import { canFormatLanguage, formatCode } from "./lib/format";
 import { toggleEmphasis, type Emphasis } from "./lib/emphasis";
+import { decodeBase64, encodeBase64 } from "./lib/encode";
 import { LANGUAGES, type Doc } from "./lib/types";
 import { docLabel, useWorkspace } from "./store/workspace";
 
@@ -210,6 +211,37 @@ export default function App() {
     view.dispatch(view.state.replaceSelection(crypto.randomUUID()), { userEvent: "input" });
     focusEditor();
   }, [focusEditor]);
+  // Text tools reach as far as the formatter does: the selection, else the
+  // code block under the caret, else a snippet whole. Prose outside a block
+  // is never rewritten without being selected.
+  const transformText = useCallback(
+    (fn: (text: string) => string) => {
+      const view = activeEditor();
+      if (!view || !activeDoc) return;
+      let { from, to } = view.state.selection.main;
+      if (from === to) {
+        const block = blockAtCursor(view);
+        if (block) [from, to] = [block.bodyFrom, block.bodyTo];
+        else if (activeDoc.kind === "snippet") [from, to] = [0, view.state.doc.length];
+        else return;
+      }
+      const text = view.state.sliceDoc(from, to);
+      let out: string;
+      try {
+        out = fn(text);
+      } catch {
+        return; // Input the tool cannot read is left exactly as it was.
+      }
+      if (out === text) return;
+      view.dispatch({
+        changes: { from, to, insert: out },
+        selection: { anchor: from, head: from + out.length },
+        userEvent: "input",
+      });
+      focusEditor();
+    },
+    [activeDoc, focusEditor],
+  );
   const findInDoc = useCallback(() => {
     // CodeMirror owns in-document search; hand it the keystroke it expects.
     const content = document.querySelector<HTMLElement>(".cm-content");
@@ -340,6 +372,8 @@ export default function App() {
         run: formatActive,
       },
       { id: "find", label: "find in document", hint: "Ctrl F", run: findInDoc },
+      { id: "base64-encode", label: "encode base64", run: () => transformText(encodeBase64) },
+      { id: "base64-decode", label: "decode base64", run: () => transformText(decodeBase64) },
       { id: "uuid", label: "generate uuid", hint: activeDoc ? "" : "no document", run: insertUuid },
       { id: "rename", label: "rename tab", hint: "F2", run: renameActive },
       {
@@ -376,7 +410,7 @@ export default function App() {
         run: () => moveActiveTab(1),
       },
     ],
-    [newNote, newSnippet, save, saveAs, findInDoc, insertUuid, insertCode, emphasise, formatActive, prose, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, moveToProject, armed, activeDoc, activeProject, store],
+    [newNote, newSnippet, save, saveAs, findInDoc, insertUuid, transformText, insertCode, emphasise, formatActive, prose, closeActive, reopenTab, renameActive, deleteActive, moveActiveTab, moveToProject, armed, activeDoc, activeProject, store],
   );
 
   const buildCommands = useCallback(
